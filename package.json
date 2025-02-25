@@ -1,0 +1,9 @@
+{
+  "name": "elyseum-coverage-reporter-action",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/github": "^5.0.0"
+  }
+}
