@@ -44,7 +44,7 @@ runs:
 
     - name: Update or create comment
       shell: bash
-      run: node index.js
+      run: node .github/actions/elyseum-coverage-reporter/index.js
       env:
         GITHUB_TOKEN:  ${{ inputs.github_token }}
         RESULT_FILE_PATH: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
