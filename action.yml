@@ -51,35 +51,32 @@ runs:
           const resultFilePath = process.env.RESULT_FILE_PATH;
           const resultCommentBody = fs.readFileSync(resultFilePath, "utf8");
 
-          async function run() {
-            const { data: comments } = await octokit.rest.issues.listComments({
+          const { data: comments } = await octokit.rest.issues.listComments({
+            ...context.repo,
+            issue_number: context.issue.number,
+          });
+
+          const commentName = process.env.COMMENT_NAME || "Elyseum Coverage Report";
+
+          const botComment = comments.find((comment) =>
+            comment.body.includes(commentName)
+          );
+
+          let commentBody = `${resultCommentBody}`;
+          if (botComment) {
+            await octokit.rest.issues.updateComment({
+              ...context.repo,
+              comment_id: botComment.id,
+              body: commentBody,
+            });
+          } else {
+            await octokit.rest.issues.createComment({
               ...context.repo,
               issue_number: context.issue.number,
+              body: commentBody,
             });
-
-            const commentName = process.env.COMMENT_NAME || "Elyseum Coverage Report";
-
-            const botComment = comments.find((comment) =>
-              comment.body.includes(commentName)
-            );
-
-            let commentBody = `${resultCommentBody}`;
-            if (botComment) {
-              await octokit.rest.issues.updateComment({
-                ...context.repo,
-                comment_id: botComment.id,
-                body: commentBody,
-              });
-            } else {
-              await octokit.rest.issues.createComment({
-                ...context.repo,
-                issue_number: context.issue.number,
-                body: commentBody,
-              });
-            }
           }
-
-          run();
+          
 
       env:
         GITHUB_TOKEN:  ${{ inputs.github_token }}
