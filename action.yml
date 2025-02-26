@@ -32,7 +32,7 @@ runs:
     - name: Install elyseum-cli
       shell: bash
       working-directory: ${{ inputs.workdir }}
-      run: npm install -g @dragonshorn-studios/elyseum-cli @actions/github
+      run: npm install -g @dragonshorn-studios/elyseum-cli
 
     - name: Run elyseum-cli
       shell: bash
@@ -42,11 +42,7 @@ runs:
         GITHUB_BASE_REF: ${{ github.base_ref }}
         GITHUB_SHA: ${{ github.sha }}
 
-    - run: npm install fs
-      shell: bash
-
     - name: Update or create comment
-      # inline script to update or create a comment
       uses: actions/github-script@v7
       with:
         script: |
