@@ -18,7 +18,7 @@ async function run() {
     comment.body.includes(commentName)
   );
 
-  let commentBody = `# ${commentName}\n${resultCommentBody}`;
+  let commentBody = `${resultCommentBody}`;
   if (botComment) {
     await octokit.rest.issues.updateComment({
       ...context.repo,

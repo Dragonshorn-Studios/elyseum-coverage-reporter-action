@@ -27,7 +27,7 @@ runs:
 
     - name: Run elyseum-cli
       shell: bash
-      run: elyseum-cli --reporter.coverage=github-pr-comment ${{ inputs.command }} --base ${{ github.base_ref }} --head ${{ github.head_ref }}
+      run: elyseum-cli ${{ inputs.command }} --base ${{ github.base_ref }} --head ${{ github.head_ref }} --reporter.coverage=github-pr-comment --reporter.coverage.github-pr-comment.comment-name ${{ inputs.comment-name }} --reporter.coverage.github-pr-comment.comment-file-path ${{ inputs.result-file-path }}
 
     - name: Update or create comment
       shell: bash
