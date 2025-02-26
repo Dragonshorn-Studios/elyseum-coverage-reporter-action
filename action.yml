@@ -38,6 +38,9 @@ runs:
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: elyseum-cli ${{ inputs.command }} --reporter.coverage=github-pr-comment --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.comment-file-path "${{ inputs.result-file-path }}"
+      env:
+        GITHUB_BASE_REF: ${{ github.base_ref }}
+        GITHUB_SHA: ${{ github.sha }}
 
     - name: Update or create comment
       shell: bash

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "release": "npm version patch -m 'chore: :bookmark: release %s' && git push --follow-tags"
+  },
   "dependencies": {
     "@actions/github": "^5.0.0"
   }
