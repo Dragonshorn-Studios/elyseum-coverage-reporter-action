@@ -42,43 +42,18 @@ runs:
         GITHUB_BASE_REF: ${{ github.base_ref }}
         GITHUB_SHA: ${{ github.sha }}
 
-    - name: Update or create comment
-      uses: actions/github-script@v7
+    - name: Find Comment
+      uses: peter-evans/find-comment@v3
+      id: fc
       with:
-        script: |
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: ${{ inputs.comment-name }}
 
-          const { data: comments } = await octokit.rest.issues.listComments({
-            ...context.repo,
-            issue_number: context.issue.number,
-          });
-
-          const commentName = process.env.COMMENT_NAME || "Elyseum Coverage Report";
-
-          const botComment = comments.find((comment) =>
-            comment.body.includes(commentName)
-          );
-
-          console.log("botComment", botComment);
-
-          const fs = require('fs')
-          const resultFilePath = process.env.RESULT_FILE_PATH;
-          const resultCommentBody = fs.readFileSync(resultFilePath, "utf8");
-
-          let commentBody = `${resultCommentBody}`;
-          if (botComment) {
-            await octokit.rest.issues.updateComment({
-              ...context.repo,
-              comment_id: botComment.id,
-              body: commentBody,
-            });
-          } else {
-            await octokit.rest.issues.createComment({
-              ...context.repo,
-              issue_number: context.issue.number,
-              body: commentBody,
-            });
-          }
-      env:
-        GITHUB_TOKEN:  ${{ inputs.github_token }}
-        RESULT_FILE_PATH: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
-        COMMENT_NAME: ${{ inputs.comment-name }}
+    - name: Create comment
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.number }}
+        body-path: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
+        edit-mode: replace
