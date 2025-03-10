@@ -106,10 +106,7 @@ runs:
         status: ${{ steps.parse-annotations.outputs.status }}
         name: 🚦 Quality Gate
         output: |
-          {
-            "title": "${{ steps.parse-annotations.outputs.title }}",
-            "summary": "${{ steps.parse-annotations.outputs.summary }}",
-          }
+          {"summary":"${{ steps.parse-annotations.outputs.summary }}"}
         output_text_description_file: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
         annotations: |
           ${{ steps.parse-annotations.outputs.annotations }}
