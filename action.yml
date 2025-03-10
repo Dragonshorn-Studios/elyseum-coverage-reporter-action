@@ -90,7 +90,7 @@ runs:
       id: parse-annotations
       shell: bash
       run: |
-        echo "annotations=$(jq -r .annotations < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "annotations=$(jq -c .annotations < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "name=$(jq -r .name < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "title=$(jq -r '.title' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "summary=$(jq -r '.summary' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
