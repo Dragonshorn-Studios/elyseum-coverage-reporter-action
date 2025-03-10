@@ -93,9 +93,9 @@ runs:
       run: |
         echo "annotations=$(jq -c . < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "name=$(jq -r .name < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "title=$(jq -r .title < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "summary=$(jq -r .summary < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "text=$(jq -r .details < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "title=$(jq -r .output.title < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "summary=$(jq -r .output.summary < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "text=$(jq -r .output.text < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "status=$(jq -r .status < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "conclusion=$(jq -r .conclusion < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
 
@@ -106,12 +106,12 @@ runs:
         token: ${{ inputs.github_token }}
         conclusion: ${{ steps.parse-annotations.outputs.conclusion }}
         status: ${{ steps.parse-annotations.outputs.status }}
-        name: ${{ steps.parse-annotations.outputs.name }}
+        name: "${{ steps.parse-annotations.outputs.name }}"
         output: |
           {
             "title": "${{ steps.parse-annotations.outputs.title }}",
             "summary": "${{ steps.parse-annotations.outputs.summary }}",
-            "text": "${{ steps.parse-annotations.outputs.text }}",
+            "text_description": "${{ steps.parse-annotations.outputs.text }}",
           }
         annotations: |
           ${{ steps.read_error_log.outputs.error_log }}
