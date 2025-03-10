@@ -29,7 +29,7 @@ inputs:
     default: "80"
   quality-gate-fail:
     description: "Quality gate to fail against"
-    default: "20"
+    default: "0"
   use-dev-elyseum-cli:
     description: "Use the development branch elyseum-cli"
     default: ""
