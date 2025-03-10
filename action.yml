@@ -98,12 +98,12 @@ runs:
         echo "text=$(jq -r .details < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "status=$(jq -r .status < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "conclusion=$(jq -r .conclusion < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        
+
     - name: 📢 Update Check Run
       uses: LouisBrunner/checks-action@v2.0.0
       if: always()
       with:
-        token: ${{ inputs.github-token }}
+        token: ${{ inputs.github_token }}
         conclusion: ${{ steps.parse-annotations.outputs.conclusion }}
         status: ${{ steps.parse-annotations.outputs.status }}
         name: ${{ steps.parse-annotations.outputs.name }}
