@@ -87,15 +87,38 @@ runs:
         edit-mode: replace
 
     # parse annotation json using jq from annotations file
+    # 
+      # owner,
+      # repo,
+      # name: "Quality Gate",
+      # head_sha: diffCoverage.headSha,
+      # status: "completed",
+      # conclusion: qualityGateFailed
+      #   ? "failure"
+      #   : qualityGateWarning
+      #   ? "neutral"
+      #   : "success",
+      # output: {
+      #   title: "Coverage Quality Gate",
+      #   summary: `Coverage Quality Gate ${
+      #     qualityGateFailed
+      #       ? "Failed"
+      #       : qualityGateWarning
+      #       ? "Warning"
+      #       : "Passed"
+      #   }`,
+      #   text: markdown,
+      #   annotations: annotations,
+      # },
     - name: Parse annotations
       id: parse-annotations
       shell: bash
       run: |
         echo "annotations=$(jq -c . < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "name=$(jq -r .name < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "title=$(jq -r .output.title < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "summary=$(jq -r .output.summary < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "text=$(jq -r .output.text < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "title=$(jq -r '.title' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "summary=$(jq -r '.summary' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "text=$(jq -r '.text' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "status=$(jq -r .status < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "conclusion=$(jq -r .conclusion < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
 
