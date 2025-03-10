@@ -104,7 +104,7 @@ runs:
         token: ${{ inputs.github_token }}
         conclusion: ${{ steps.parse-annotations.outputs.conclusion }}
         status: ${{ steps.parse-annotations.outputs.status }}
-        name: "${{ steps.parse-annotations.outputs.name }}"
+        name: "${{ inputs.comment-name }}"
         output: |
           {
             "title": "${{ steps.parse-annotations.outputs.title }}",
