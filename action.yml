@@ -18,6 +18,12 @@ inputs:
   workdir:
     description: "Working directory to run elyseum-cli in"
     default: "."
+  result-file-path:
+    description: "Path to the result file"
+    default: "coverage/github.pr.coverage.md"
+  annotation-file-path:
+    description: "Path to the result file"
+    default: "coverage/github.pr.annotations.json"
   quality-gate:
     description: "Quality gate to check against"
     default: "80"
@@ -55,7 +61,7 @@ runs:
     - name: Run elyseum-cli
       shell: bash
       working-directory: ${{ inputs.workdir }}
-      run: elyseum-cli ${{ inputs.command }} --reporter.coverage=github-pr-comment --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.create-annotations --reporter.coverage.github-pr-comment.quality-gate "${{ inputs.quality-gate }}" --reporter.coverage.github-pr-comment.quality-gate-fail ${{ inputs.quality-gate-fail }}
+      run: elyseum-cli ${{ inputs.command }} --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.comment-file-path "${{ inputs.result-file-path }}" --reporter.coverage=github-pr-comment --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.create-annotations --reporter.coverage.github-pr-comment.quality-gate "${{ inputs.quality-gate }}" --reporter.coverage.github-pr-comment.quality-gate-fail ${{ inputs.quality-gate-fail }}
       env:
         GITHUB_BASE_REF: ${{ github.base_ref }}
         GITHUB_SHA: ${{ github.sha }}
@@ -63,4 +69,48 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         GITHUB_EVENT_NUMBER: ${{ github.event.number }}
+
+    - name: Find Comment
+      uses: peter-evans/find-comment@v3
+      id: fc
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: ${{ inputs.comment-name }}
+
+    - name: Create comment
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.number }}
+        body-path: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
+        edit-mode: replace
+
+    # parse annotation json using jq from annotations file
+    - name: Parse annotations
+      id: parse-annotations
+      run: |
+        echo "annotations=$(jq -c . < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "name=$(jq -r .name < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "title=$(jq -r .title < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "summary=$(jq -r .summary < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "text=$(jq -r .details < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "status=$(jq -r .status < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        echo "conclusion=$(jq -r .conclusion < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+    - name: 📢 Update Check Run
+      uses: LouisBrunner/checks-action@v2.0.0
+      if: always()
+      with:
+        token: ${{ inputs.github-token }}
+        conclusion: ${{ steps.parse-annotations.outputs.conclusion }}
+        status: ${{ steps.parse-annotations.outputs.status }}
+        name: ${{ steps.parse-annotations.outputs.name }}
+        output: |
+          {
+            "title": "${{ steps.parse-annotations.outputs.title }}",
+            "summary": "${{ steps.parse-annotations.outputs.summary }}",
+            "text": "${{ steps.parse-annotations.outputs.text }}",
+          }
+        annotations: |
+          ${{ steps.read_error_log.outputs.error_log }}
 
