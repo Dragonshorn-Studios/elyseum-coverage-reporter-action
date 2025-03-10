@@ -89,6 +89,7 @@ runs:
     # parse annotation json using jq from annotations file
     - name: Parse annotations
       id: parse-annotations
+      shell: bash
       run: |
         echo "annotations=$(jq -c . < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "name=$(jq -r .name < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
@@ -97,6 +98,7 @@ runs:
         echo "text=$(jq -r .details < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "status=$(jq -r .status < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "conclusion=$(jq -r .conclusion < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        
     - name: 📢 Update Check Run
       uses: LouisBrunner/checks-action@v2.0.0
       if: always()
