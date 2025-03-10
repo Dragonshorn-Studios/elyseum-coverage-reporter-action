@@ -61,7 +61,7 @@ runs:
     - name: Run elyseum-cli
       shell: bash
       working-directory: ${{ inputs.workdir }}
-      run: elyseum-cli ${{ inputs.command }} --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.comment-file-path "${{ inputs.result-file-path }}" --reporter.coverage=github-pr-comment --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.create-annotations --reporter.coverage.github-pr-comment.quality-gate "${{ inputs.quality-gate }}" --reporter.coverage.github-pr-comment.quality-gate-fail ${{ inputs.quality-gate-fail }}
+      run: elyseum-cli ${{ inputs.command }} --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.comment-file-path "${{ inputs.result-file-path }}" --reporter.coverage=github-pr-comment --reporter.coverage.github-pr-comment.create-annotations --reporter.coverage.github-pr-comment.quality-gate "${{ inputs.quality-gate }}" --reporter.coverage.github-pr-comment.quality-gate-fail ${{ inputs.quality-gate-fail }}
       env:
         GITHUB_BASE_REF: ${{ github.base_ref }}
         GITHUB_SHA: ${{ github.sha }}
@@ -85,40 +85,15 @@ runs:
         issue-number: ${{ github.event.number }}
         body-path: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
         edit-mode: replace
-
-    # parse annotation json using jq from annotations file
-    # 
-      # owner,
-      # repo,
-      # name: "Quality Gate",
-      # head_sha: diffCoverage.headSha,
-      # status: "completed",
-      # conclusion: qualityGateFailed
-      #   ? "failure"
-      #   : qualityGateWarning
-      #   ? "neutral"
-      #   : "success",
-      # output: {
-      #   title: "Coverage Quality Gate",
-      #   summary: `Coverage Quality Gate ${
-      #     qualityGateFailed
-      #       ? "Failed"
-      #       : qualityGateWarning
-      #       ? "Warning"
-      #       : "Passed"
-      #   }`,
-      #   text: markdown,
-      #   annotations: annotations,
-      # },
+        
     - name: Parse annotations
       id: parse-annotations
       shell: bash
       run: |
-        echo 'annotations=$(jq -r .annotations < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})' >> $GITHUB_OUTPUT
+        echo "annotations=$(jq -r .annotations < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "name=$(jq -r .name < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "title=$(jq -r '.title' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "summary=$(jq -r '.summary' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "text=$(jq -r '.text' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "status=$(jq -r .status < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
         echo "conclusion=$(jq -r .conclusion < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
 
@@ -134,8 +109,8 @@ runs:
           {
             "title": "${{ steps.parse-annotations.outputs.title }}",
             "summary": "${{ steps.parse-annotations.outputs.summary }}",
-            "text_description": "${{ steps.parse-annotations.outputs.text }}",
           }
+        output_text_description_file: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
         annotations: |
-          ${{ steps.read_error_log.outputs.error_log }}
+          ${{ steps.parse-annotations.outputs.annotations }}
 
