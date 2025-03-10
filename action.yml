@@ -25,8 +25,8 @@ inputs:
     description: "Quality gate to fail against"
     default: "50"
   use-dev-elyseum-cli:
-    description: "Use the development version of elyseum-cli"
-    default: "false"
+    description: "Use the development branch elyseum-cli"
+    default: ""
 runs:
   using: "composite"
   steps:
@@ -36,17 +36,18 @@ runs:
         node-version: 20
 
     - name: Install elyseum-cli
-      if: ${{ inputs.use-dev-elyseum-cli == 'false' }}
+      if: ${{ inputs.use-dev-elyseum-cli == '' }}
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: npm install -g @dragonshorn-studios/elyseum-cli
     
     - name: Install elyseum-cli from Dragonshorn-Studios/elyseum-cli repository
-      if: ${{ inputs.use-dev-elyseum-cli == 'true' }}
+      if: ${{ inputs.use-dev-elyseum-cli != '' }}
       shell: bash
       working-directory: ${{ inputs.workdir }}
       run: |
         git clone https://github.com/Dragonshorn-Studios/elyseum-cli.git /tmp/elyseum-cli
+        git checkout ${{ inputs.use-dev-elyseum-cli }}
         cd /tmp/elyseum-cli
         npm install
         npm link .
