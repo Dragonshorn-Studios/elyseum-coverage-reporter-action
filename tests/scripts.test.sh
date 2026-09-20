@@ -146,9 +146,12 @@ fi
 
 # The curl SLA contract: bounded timeout, bounded retries, and the
 # envelope as the request body — dropping any of these changes behavior
-# silently (unbounded hang, no retry, empty payload).
-if grep -qFx -- "--max-time" "$CURL_LOG" && grep -qFx "30" "$CURL_LOG" &&
-  grep -qFx -- "--retry" "$CURL_LOG" && grep -qFx "3" "$CURL_LOG" &&
+# silently (unbounded hang, no retry, empty payload). Values are checked
+# adjacent to their flags, not as independent lines.
+log_has_flag_value() {
+  grep -A1 -Fx -- "$1" "$CURL_LOG" | tail -1 | grep -qFx -- "$2"
+}
+if log_has_flag_value "--max-time" "30" && log_has_flag_value "--retry" "3" &&
   grep -qFx -- "--data-binary" "$CURL_LOG" && grep -qFx "@$ENVELOPE_TMP" "$CURL_LOG"; then
   echo "ok: curl call is bounded with the envelope as its body"
 else
@@ -157,7 +160,10 @@ else
 fi
 
 assert_upload "404 names the project slug as the suspect" 0 "project not found" FAKE_CURL_CODE=404
+assert_upload "413 reports the payload limit" 0 "payload limit" FAKE_CURL_CODE=413
+assert_upload "429 reports rate limiting" 0 "rate-limited" FAKE_CURL_CODE=429
 assert_upload "5xx reports a server error" 0 "Elyseum server error (HTTP 503)" FAKE_CURL_CODE=503
+assert_upload "unexpected status names the code" 0 "unexpected HTTP 418" FAKE_CURL_CODE=418
 
 # emit-envelope: exercised through a fake elyseum-cli on PATH that records
 # its argv, so the conclusion mapping and flag assembly are pinned.
@@ -192,6 +198,10 @@ run_emit() {
   )"
   EMIT_EXIT=$?
   EMIT_OUT="$out"
+  if [ "$EMIT_EXIT" != "$expected" ]; then
+    echo "FAIL: $desc (expected exit $expected, got $EMIT_EXIT; output: $out)"
+    FAILURES=$((FAILURES + 1))
+  fi
 }
 
 # Conclusion mapping: the only translation point between check-run
