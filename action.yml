@@ -241,9 +241,9 @@ runs:
         COVERAGE_INPUT: ${{ inputs.envelope-coverage-input }}
         # Map the check-run conclusion onto the envelope's gate vocabulary.
         CHECK_CONCLUSION: ${{ steps.parse-annotations.outputs.conclusion }}
-        # Run identity (provider, run/job id, attempt, url) comes from the
-        # runner's default GITHUB_RUN_ID / GITHUB_RUN_ATTEMPT / GITHUB_JOB /
-        # GITHUB_REPOSITORY environment, which the CLI reads directly.
+        # Run facts come from the runner's default GITHUB_RUN_ID /
+        # GITHUB_RUN_ATTEMPT / GITHUB_JOB / GITHUB_REPOSITORY environment,
+        # which the CLI reads directly to build the run's identity and URL.
       run: |
         set -euo pipefail
         case "$CHECK_CONCLUSION" in

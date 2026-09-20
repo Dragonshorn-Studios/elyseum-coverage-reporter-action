@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Uploads the v1 result envelope to the configured Elyseum project
-# (POST /api/v1/projects/{slug}/runs). The host keys a run on provider +
-# run id + job + attempt, so retries of the same CI attempt update the
-# same stored run (201 created, then 200 updated); a workflow re-run is a
-# new attempt and its own run.
+# (POST /api/v1/projects/{slug}/runs). Within a project the host keys a
+# run on provider + run id + job + attempt, so retries of the same CI
+# attempt update the same stored run (201 created, then 200 updated); a
+# workflow re-run is a new attempt and its own run.
 #
 # Inputs (env):
 #   ENVELOPE_PATH   - path to the v1 envelope JSON file (required)

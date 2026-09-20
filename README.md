@@ -55,12 +55,12 @@ and the Action additionally emits the versioned v1 result envelope (via
 `POST {server}/api/v1/projects/{slug}/runs`, so the PR feedback and the
 hosted history receive identical facts.
 
-- **Idempotent within an attempt.** The host keys a run on provider +
-  run id + job + attempt. Retries of the same attempt converge on one
-  stored run (HTTP 201 created, then 200 updated). A workflow re-run
-  increments GitHub's attempt counter, so it is recorded as its own run —
-  which is the history you want when attempt 2 goes green after attempt 1
-  failed.
+- **Idempotent within an attempt.** Within a project, the host keys a run
+  on provider + run id + job + attempt. Retries of the same attempt
+  converge on one stored run (HTTP 201 created, then 200 updated). A
+  workflow re-run increments GitHub's attempt counter, so it is recorded
+  as its own run — which is the history you want when attempt 2 goes
+  green after attempt 1 failed.
 - **Quality-gate failures still upload.** A failed gate is exactly the
   kind of fact hosted history exists to record; the gate verdict travels
   in the envelope (`passed` / `failed`, or `unknown` when the check-run
