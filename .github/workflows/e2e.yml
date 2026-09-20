@@ -35,7 +35,7 @@ jobs:
         continue-on-error: true
         with:
           github_token: ${{ github.token }}
-          command: diff-coverage
+          # Whole-file coverage, so the fixed fixture decides the verdict.
           command: coverage
           quality-gate: "50"
           quality-gate-fail: "40"
@@ -61,4 +61,61 @@ jobs:
             exit 1
           fi
           echo "gate-failure behavior and idempotent comment publication verified"
+
+  upload-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare fixture project
+        shell: bash
+        run: |
+          mkdir -p coverage
+          printf 'TN:\nSF:src/sum.ts\nDA:1,1\nDA:2,0\nDA:3,0\nLF:3\nLH:1\nend_of_record\n' > coverage/lcov.info
+
+      - name: Start stub ingest server
+        shell: bash
+        run: |
+          python3 tests/stub-ingest-server.py 8099 "$PWD/stub-requests.log" >stub-server.log 2>&1 &
+          for _ in $(seq 1 20); do
+            curl -sf http://127.0.0.1:8099/healthz >/dev/null 2>&1 && exit 0
+            sleep 0.5
+          done
+          echo "::error::stub ingest server did not become ready"
+          cat stub-server.log
+          exit 1
+
+      - name: "Run this Action (upload expected to succeed)"
+        id: action
+        uses: ./
+        with:
+          github_token: ${{ github.token }}
+          # Whole-file coverage: the 33% fixture passes the 30% gate.
+          command: coverage
+          quality-gate: "30"
+          # Distinct from the other job's comment name (and not a substring
+          # of it) so concurrent jobs never fight over the same comment.
+          comment-name: "Elyseum Upload Stub"
+          elyseum-server: http://127.0.0.1:8099
+          elyseum-project-slug: stub-project
+          # A stub token, never a secret: the assertion greps for it.
+          elyseum-ingest-token: stub-token-for-e2e
+          elyseum-strict-upload: "true"
+
+      - name: Assert the envelope reached the stub server
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s stub-requests.log ]; then
+            echo "::error::the stub server recorded no request; upload wiring is broken."
+            exit 1
+          fi
+          grep -q "POST /api/v1/projects/stub-project/runs" stub-requests.log
+          grep -q "Authorization: Bearer stub-token-for-e2e" stub-requests.log
+          grep -q '"schema_version": "1"' stub-requests.log
+          grep -q '"quality_gate"' stub-requests.log
+          echo "envelope upload wiring verified end-to-end"
 

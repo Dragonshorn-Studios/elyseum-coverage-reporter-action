@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Test double for the elyseum-cli binary: records argv to $FAKE_CLI_LOG
+# (one argument per line) and exits with $FAKE_CLI_EXIT (default 0).
+# Produces no other output.
+if [ -n "${FAKE_CLI_LOG:-}" ]; then
+  printf '%s\n' "$@" >> "$FAKE_CLI_LOG"
+fi
+exit "${FAKE_CLI_EXIT:-0}"
