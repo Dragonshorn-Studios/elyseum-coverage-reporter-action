@@ -28,7 +28,7 @@ jobs:
           echo "export const sum = (a: number, b: number): number => a + b;" > fixtures/project/src/sum.ts
           printf 'TN:\nSF:fixtures/project/src/sum.ts\nDA:1,1\nDA:2,0\nLF:2\nLH:1\nend_of_record\n' > coverage/lcov.info
 
-      - name: Run this Action (gate expected to fail: 1/2 covered)
+      - name: "Run this Action (gate expected to fail: 1/2 covered)"
         id: action
         uses: ./
         continue-on-error: true
