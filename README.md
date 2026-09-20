@@ -63,9 +63,10 @@ hosted history receive identical facts.
   kind of fact hosted history exists to record; the gate verdict travels
   in the envelope (`passed` / `failed`).
 - **Bounded retry, terminal failures never retried.** curl retries only
-  transient failures (timeouts, HTTP 408/429/5xx, connection refused),
-  three attempts, 30 s per attempt. Authentication and validation
-  rejections fail immediately with an HTTP-code-specific message.
+  transient failures (timeouts, HTTP 408/429/500/502/503/504, connection
+  refused) — one attempt plus three retries, 30 s per attempt.
+  Authentication and validation rejections fail immediately with an
+  HTTP-code-specific message.
 - **Upload failure ≠ quality-gate failure.** By default an upload problem
   emits a `::warning` and the run's verdict is unchanged; with
   `elyseum-strict-upload: true` it fails the run. Misconfiguration

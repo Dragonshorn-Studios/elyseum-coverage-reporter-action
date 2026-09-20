@@ -33,9 +33,9 @@ fi
 SERVER_ORIGIN="${SERVER_ORIGIN%/}"
 
 # Bounded retry on transient failures only: curl's --retry covers timeouts
-# and HTTP 408/429/5xx, --retry-connrefused adds a briefly-down server.
-# Auth (401/403) and validation (422) failures are terminal and never
-# retried.
+# and HTTP 408/429/500/502/503/504, --retry-connrefused adds a
+# briefly-down server. Auth (401/403) and validation (422) failures are
+# terminal and never retried.
 RESPONSE_BODY="$(mktemp)"
 trap 'rm -f "$RESPONSE_BODY"' EXIT
 
@@ -76,8 +76,8 @@ else
     404) message="Upload failed: project not found (HTTP 404). Check elyseum-project-slug." ;;
     413) message="Upload rejected: envelope exceeds the server's payload limit (HTTP 413)." ;;
     422) message="Upload rejected: envelope validation failed (HTTP 422).$body_snippet" ;;
-    429) message="Upload rate-limited (HTTP 429); retries were exhausted." ;;
-    5*) message="Elyseum server error (HTTP $http_code); retries were exhausted." ;;
+    429) message="Upload rate-limited (HTTP 429). Retry later or reduce upload frequency." ;;
+    5*) message="Elyseum server error (HTTP $http_code). Check the server's health." ;;
     *) message="Upload failed with unexpected HTTP $http_code." ;;
   esac
 fi

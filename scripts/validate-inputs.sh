@@ -8,6 +8,11 @@ fail() {
   exit 1
 }
 
+# Optional inputs default to empty under set -u; absence means "not given".
+: "${ENVELOPE_TESTS_FORMAT:=}" "${ENVELOPE_TESTS_INPUT:=}" \
+  "${ENVELOPE_COVERAGE_FORMAT:=}" "${ENVELOPE_COVERAGE_INPUT:=}" \
+  "${PROJECT_SLUG:=}"
+
 # command: only the two commands that produce the PR comment/check-run files
 # are supported; anything else is a caller mistake.
 case "$COMMAND" in
@@ -54,5 +59,13 @@ case "$ENVELOPE_COVERAGE_FORMAT" in
   "" | lcov | clover | go-coverprofile) ;;
   *) fail "envelope-coverage-format must be one of lcov, clover, go-coverprofile (got '$ENVELOPE_COVERAGE_FORMAT')." ;;
 esac
+
+# Same slug grammar the host enforces (ProjectController rules); a bad slug
+# here would otherwise surface as a confusing curl/404 failure at upload.
+# Absence is fine (upload is opt-in); upload-envelope.sh requires it then.
+slug="${PROJECT_SLUG:-}"
+if [ -n "$slug" ] && ! [[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  fail "elyseum-project-slug must be lowercase alphanumerics separated by single hyphens (got '$slug')."
+fi
 
 exit 0

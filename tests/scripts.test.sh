@@ -166,11 +166,12 @@ assert_exit "non-numeric quality-gate-fail fails" 1 diff-coverage 80 15%
 assert_exit "missing workdir fails" 1 diff-coverage 80 15 ./does-not-exist
 
 assert_adapter() {
-  local desc="$1" expected="$2" tf="$3" ti="$4" cf="$5" ci="$6"
+  local desc="$1" expected="$2" tf="$3" ti="$4" cf="$5" ci="$6" slug="${7:-}"
   local out
   out="$(COMMAND=diff-coverage QUALITY_GATE=80 QUALITY_GATE_FAIL=15 WORKDIR=. \
     ENVELOPE_TESTS_FORMAT="$tf" ENVELOPE_TESTS_INPUT="$ti" \
     ENVELOPE_COVERAGE_FORMAT="$cf" ENVELOPE_COVERAGE_INPUT="$ci" \
+    PROJECT_SLUG="$slug" \
     bash "$ROOT/scripts/validate-inputs.sh" 2>&1)"
   local code=$?
   if [ "$code" != "$expected" ]; then
@@ -190,6 +191,9 @@ assert_adapter "tests input without format fails" 1 "" tests/junit.xml "" ""
 assert_adapter "coverage format without input fails" 1 "" "" clover ""
 assert_adapter "unknown tests format fails" 1 tap tests/out.tap "" ""
 assert_adapter "unknown coverage format fails" 1 "" "" sonar coverage/sonar.xml
+assert_adapter "absent project slug passes" 0 "" "" "" "" ""
+assert_adapter "well-formed project slug passes" 0 "" "" "" "" my-project
+assert_adapter "malformed project slug fails" 1 "" "" "" "" "My Project"
 
 # parse-annotations
 assert_parse "valid annotations parse with all outputs" 0 "$FIXTURES/annotations-pass.json" "conclusion=failure"
