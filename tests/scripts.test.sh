@@ -213,6 +213,20 @@ run_emit "failure maps to failed" 0 failure
 check_cli_args "failure maps to failed" "--emit-envelope.quality-gate-conclusion" "failed"
 run_emit "other conclusions map to unknown" 0 neutral
 check_cli_args "other conclusions map to unknown" "--emit-envelope.quality-gate-conclusion" "unknown"
+run_emit "unrecognized conclusion fails loudly" 1 banana
+if printf '%s' "$EMIT_OUT" | grep -qF "unrecognized check-run conclusion 'banana'"; then
+  echo "ok: unrecognized conclusion names the raw value"
+else
+  echo "FAIL: unrecognized conclusion names the raw value (output: $EMIT_OUT)"
+  FAILURES=$((FAILURES + 1))
+fi
+run_emit "missing conclusion fails loudly" 1 ""
+if printf '%s' "$EMIT_OUT" | grep -qF "CHECK_CONCLUSION is required but not set"; then
+  echo "ok: missing conclusion fails with an actionable error"
+else
+  echo "FAIL: missing conclusion fails with an actionable error (output: $EMIT_OUT)"
+  FAILURES=$((FAILURES + 1))
+fi
 
 # Adapter flags appear exactly when their format is given.
 run_emit "no adapter flags when formats are empty" 0 success
@@ -284,6 +298,38 @@ assert_adapter "absent project slug passes" 0 "" "" "" "" ""
 assert_adapter "well-formed project slug passes" 0 "" "" "" "" my-project
 assert_adapter "malformed project slug fails" 1 "" "" "" "" "My Project"
 assert_adapter "double-hyphen slug fails" 1 "" "" "" "" a--b
+
+# Upload wiring must be all-or-nothing and strictly typed.
+assert_validate() {
+  local desc="$1" expected="$2" needle="$3"
+  shift 3
+  local out kv
+  out="$(
+    export COMMAND=diff-coverage QUALITY_GATE=80 QUALITY_GATE_FAIL=15 WORKDIR="$ROOT" \
+      ENVELOPE_TESTS_FORMAT="" ENVELOPE_TESTS_INPUT="" ENVELOPE_COVERAGE_FORMAT="" \
+      ENVELOPE_COVERAGE_INPUT="" PROJECT_SLUG="" SERVER="" INGEST_TOKEN="" STRICT_MODE=""
+    for kv in "$@"; do export "$kv"; done
+    bash "$ROOT/scripts/validate-inputs.sh" 2>&1
+  )"
+  local code=$?
+  if [ "$code" != "$expected" ] || { [ -n "$needle" ] && ! printf '%s' "$out" | grep -qF "$needle"; }; then
+    echo "FAIL: $desc (expected exit $expected with '$needle'; got exit $code, output: $out)"
+    FAILURES=$((FAILURES + 1))
+  else
+    echo "ok: $desc"
+  fi
+}
+
+assert_validate "full upload config passes" 0 "" \
+  SERVER="https://elyseum.example.com" PROJECT_SLUG="my-project" INGEST_TOKEN="tok"
+assert_validate "slug without server fails loudly" 1 "upload is disabled" PROJECT_SLUG="my-project"
+assert_validate "token without server fails loudly" 1 "upload is disabled" INGEST_TOKEN="tok"
+assert_validate "server without scheme fails loudly" 1 "http(s) origin" SERVER="elyseum.example.com" PROJECT_SLUG="p" INGEST_TOKEN="t"
+assert_validate "server without slug fails loudly" 1 "required" SERVER="https://elyseum.example.com" INGEST_TOKEN="t"
+assert_validate "non-boolean strict mode fails loudly" 1 "elyseum-strict-upload must be" \
+  SERVER="https://elyseum.example.com" PROJECT_SLUG="p" INGEST_TOKEN="t" STRICT_MODE="True"
+assert_validate "explicit false strict mode passes" 0 "" \
+  SERVER="https://elyseum.example.com" PROJECT_SLUG="p" INGEST_TOKEN="t" STRICT_MODE="false"
 
 # parse-annotations
 assert_parse "valid annotations parse with all outputs" 0 "$FIXTURES/annotations-pass.json" "conclusion=failure"

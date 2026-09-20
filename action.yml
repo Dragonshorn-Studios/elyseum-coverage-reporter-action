@@ -115,6 +115,9 @@ runs:
         ENVELOPE_COVERAGE_FORMAT: ${{ inputs.envelope-coverage-format }}
         ENVELOPE_COVERAGE_INPUT: ${{ inputs.envelope-coverage-input }}
         PROJECT_SLUG: ${{ inputs.elyseum-project-slug }}
+        SERVER: ${{ inputs.elyseum-server }}
+        INGEST_TOKEN: ${{ inputs.elyseum-ingest-token }}
+        STRICT_MODE: ${{ inputs.elyseum-strict-upload }}
       run: |
         set -euo pipefail
         "$GITHUB_ACTION_PATH/scripts/validate-inputs.sh"
@@ -255,11 +258,16 @@ runs:
         STRICT_MODE: ${{ inputs.elyseum-strict-upload }}
         EMIT_EXIT_CODE: ${{ steps.emit.outputs.exit-code }}
       run: |
-        if [ "$STRICT_MODE" = "true" ]; then
-          echo "::error::Envelope emission failed (elyseum-cli exit ${EMIT_EXIT_CODE:-?}); strict upload is enabled. See the 'Emit envelope' step."
+        if [ -n "$EMIT_EXIT_CODE" ]; then
+          detail="elyseum-cli exit $EMIT_EXIT_CODE"
+        else
+          detail="the emit script failed before elyseum-cli ran"
+        fi
+        if [ "${STRICT_MODE:-}" = "true" ]; then
+          echo "::error::Envelope emission failed ($detail); strict upload is enabled. See the 'Emit envelope' step."
           exit 1
         fi
-        echo "::warning::Envelope emission failed (elyseum-cli exit ${EMIT_EXIT_CODE:-?}); skipping the Elyseum upload. Set elyseum-strict-upload to fail the run instead."
+        echo "::warning::Envelope emission failed ($detail); skipping the Elyseum upload. Set elyseum-strict-upload to fail the run instead."
 
     - name: Upload envelope to Elyseum
       if: ${{ steps.emit.outcome == 'success' }}

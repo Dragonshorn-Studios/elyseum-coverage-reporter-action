@@ -74,7 +74,9 @@ hosted history receive identical facts.
   emits a `::warning` and the run's verdict is unchanged; with
   `elyseum-strict-upload: true` it fails the run. Misconfiguration
   (missing token/slug, missing envelope) always fails with an actionable
-  error.
+  error. Note that without strict mode a *permanent* rejection — a
+  revoked token (401/403) or a wrong slug (404) — warns on every run
+  while hosted history silently goes stale.
 - **The token is never logged.** It travels only in the `Authorization`
   header; supply it from GitHub Secrets, e.g.
   `elyseum-ingest-token: ${{ secrets.ELYSIUM_INGEST_TOKEN }}`.

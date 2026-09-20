@@ -36,5 +36,11 @@ jobs:
               if uses.startswith('actions/setup-node'):
                   node_version = str(step['with']['node-version'])
           assert node_version == '20', f'setup-node version must be 20, got {node_version}'
+          # The upload steps gate on this step id; renaming it silently
+          # disables the upload feature.
+          steps_by_name = {s.get('name'): s for s in doc['runs']['steps']}
+          assert steps_by_name['Emit envelope'].get('id') == 'emit', "Emit envelope step must keep id 'emit'"
+          assert "steps.emit.outcome == 'success'" in steps_by_name['Upload envelope to Elyseum']['if'], 'upload must gate on emit success'
+          assert "steps.emit.outcome == 'failure'" in steps_by_name['Enforce envelope emission']['if'], 'enforce must gate on emit failure'
           print('action.yml metadata OK')
           "

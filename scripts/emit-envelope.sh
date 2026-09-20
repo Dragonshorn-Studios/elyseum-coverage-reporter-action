@@ -14,12 +14,26 @@
 # Exit code: the CLI's exit code, verbatim (the Enforce step reports it).
 set -euo pipefail
 
+for var in ENVELOPE_PATH CHECK_CONCLUSION; do
+  if [ -z "${!var:-}" ]; then
+    echo "::error::emit: $var is required but not set."
+    exit 1
+  fi
+done
+
 case "$CHECK_CONCLUSION" in
   success) gate_conclusion="passed" ;;
   failure) gate_conclusion="failed" ;;
-  # neutral/timed_out/cancelled/... have no envelope equivalent; the host
-  # records them as unknown rather than inventing a verdict.
-  *) gate_conclusion="unknown" ;;
+  # These have no envelope equivalent; the host records unknown rather
+  # than inventing a verdict. Anything outside the check-run vocabulary is
+  # upstream breakage and must fail, not fabricate history.
+  neutral | cancelled | timed_out | skipped | stale | action_required | startup_failure)
+    gate_conclusion="unknown"
+    ;;
+  *)
+    echo "::error::emit: unrecognized check-run conclusion '$CHECK_CONCLUSION'."
+    exit 1
+    ;;
 esac
 args=(emit-envelope
   --emit-envelope.out "$ENVELOPE_PATH"

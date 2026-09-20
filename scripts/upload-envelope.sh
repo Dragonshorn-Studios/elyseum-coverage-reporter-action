@@ -41,7 +41,9 @@ RESPONSE_BODY="$(mktemp)"
 trap 'rm -f "$RESPONSE_BODY"' EXIT
 
 set +e
-http_code=$(curl -s -o "$RESPONSE_BODY" -w '%{http_code}' \
+# -sS: quiet on success, but curl's own error text (TLS, DNS, malformed
+# URL) still reaches the log next to the structured message below.
+http_code=$(curl -sS -o "$RESPONSE_BODY" -w '%{http_code}' \
   --max-time 30 \
   --retry 3 \
   --retry-delay 2 \
@@ -76,8 +78,9 @@ else
     404) message="Upload failed: project not found (HTTP 404). Check elyseum-project-slug." ;;
     413) message="Upload rejected: envelope exceeds the server's payload limit (HTTP 413)." ;;
     422) message="Upload rejected: envelope validation failed (HTTP 422).$body_snippet" ;;
-    429) message="Upload rate-limited (HTTP 429). Retry later or reduce upload frequency." ;;
+    429) message="Upload rate-limited (HTTP 429) after retries. Reduce upload frequency or check the server's limits." ;;
     5*) message="Elyseum server error (HTTP $http_code). Check the server's health." ;;
+    3*) message="Unexpected redirect (HTTP $http_code). Check the elyseum-server scheme and origin." ;;
     *) message="Upload failed with unexpected HTTP $http_code." ;;
   esac
 fi
