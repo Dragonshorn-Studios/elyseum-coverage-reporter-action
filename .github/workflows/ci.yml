@@ -34,7 +34,7 @@ jobs:
           for step in doc['runs']['steps']:
               uses = step.get('uses', '')
               if uses.startswith('actions/setup-node'):
-                  node_version = step['with']['node-version']
+                  node_version = str(step['with']['node-version'])
           assert node_version == '20', f'setup-node version must be 20, got {node_version}'
           print('action.yml metadata OK')
           "
