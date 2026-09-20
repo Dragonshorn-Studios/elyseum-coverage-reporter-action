@@ -1,0 +1,16 @@
+{
+  "name": "elyseum quality gate",
+  "title": "Coverage vs main",
+  "summary": "Changed-line coverage 66.67% (2/3).",
+  "status": "completed",
+  "conclusion": "failure",
+  "annotations": [
+    {
+      "path": "src/app.ts",
+      "start_line": 3,
+      "end_line": 3,
+      "annotation_level": "warning",
+      "message": "Line not covered."
+    }
+  ]
+}

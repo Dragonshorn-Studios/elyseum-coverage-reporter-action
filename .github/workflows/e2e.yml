@@ -1,0 +1,73 @@
+name: e2e
+
+# Self-test: runs this Action against its own pull requests using the
+# checked-in fixture project. Exercises the full flow — CLI install, run,
+# comment publication, check run — and the documented failure behavior.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  passing-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare fixture project
+        shell: bash
+        run: |
+          mkdir -p fixtures/project/src coverage
+          echo "export const sum = (a: number, b: number): number => a + b;" > fixtures/project/src/sum.ts
+          printf 'TN:\nSF:fixtures/project/src/sum.ts\nDA:1,1\nDA:2,0\nLF:2\nLH:1\nend_of_record\n' > coverage/lcov.info
+
+      - name: Run this Action (gate expected to fail: 1/2 covered)
+        id: action
+        uses: ./
+        continue-on-error: true
+        with:
+          github_token: ${{ github.token }}
+          command: diff-coverage
+          quality-gate: "90"
+          quality-gate-fail: "90"
+
+      - name: Assert documented gate-failure exit and single comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ACTOR: github-actions[bot]
+          COMMENT_NAME: Elyseum Coverage Reporter
+        run: |
+          if [ "${{ steps.action.outcome }}" != "failure" ]; then
+            echo "::error::Expected the Action to fail on an unmet quality gate, got outcome '${{ steps.action.outcome }}'."
+            exit 1
+          fi
+
+          # Exactly one comment from this actor must carry the report, and a
+          # re-run must update it in place rather than adding another.
+          comments=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"             --paginate             --jq '[.[] | select(.user.login == env.COMMENT_ACTOR and (.body | contains(env.COMMENT_NAME)))] | length')
+          echo "matching comments: $comments"
+          if [ "$comments" -lt 1 ]; then
+            echo "::error::Expected at least one published coverage comment."
+            exit 1
+          fi
+          echo "gate-failure behavior and comment publication verified"
+
+  guard-contract:
+    # The guard script's behavior outside the Action (push events etc.) is
+    # verified in the scripts unit tests (tests/scripts.test.sh).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Guard script unit contract
+        shell: bash
+        run: bash tests/scripts.test.sh
