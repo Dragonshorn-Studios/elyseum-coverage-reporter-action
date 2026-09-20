@@ -1,0 +1,64 @@
+name: e2e
+
+# Self-test: runs this Action against its own pull requests using the
+# checked-in fixture project. Exercises the full flow — CLI install, run,
+# comment publication, check run — and the documented failure behavior.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  passing-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare fixture project
+        shell: bash
+        run: |
+          mkdir -p coverage
+          # Mostly-uncovered fixture: 1 of 3 lines covered (33%) — the gate
+          # (fail below 40) must fail this run, independent of the PR diff.
+          printf 'TN:\nSF:src/sum.ts\nDA:1,1\nDA:2,0\nDA:3,0\nLF:3\nLH:1\nend_of_record\n' > coverage/lcov.info
+
+      - name: "Run this Action (gate expected to fail)"
+        id: action
+        uses: ./
+        continue-on-error: true
+        with:
+          github_token: ${{ github.token }}
+          command: diff-coverage
+          command: coverage
+          quality-gate: "50"
+          quality-gate-fail: "40"
+
+      - name: Assert documented gate-failure exit and single comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ACTOR: github-actions[bot]
+          COMMENT_NAME: Elyseum Coverage Reporter
+        run: |
+          if [ "${{ steps.action.outcome }}" != "failure" ]; then
+            echo "::error::Expected the Action to fail on an unmet quality gate, got outcome '${{ steps.action.outcome }}'."
+            exit 1
+          fi
+
+          # Exactly one comment from this actor must carry the report, and a
+          # re-run must update it in place rather than adding another.
+          comments=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"             --paginate             --jq '[.[] | select(.user.login == env.COMMENT_ACTOR and (.body | contains(env.COMMENT_NAME)))] | length')
+          echo "matching comments: $comments"
+          if [ "$comments" != "1" ]; then
+            echo "::error::Expected exactly one published coverage comment (update-in-place), got $comments."
+            exit 1
+          fi
+          echo "gate-failure behavior and idempotent comment publication verified"
+

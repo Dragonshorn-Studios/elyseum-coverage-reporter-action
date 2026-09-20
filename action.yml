@@ -1,113 +1,203 @@
 name: "Elyseum Coverage Reporter"
-description: "Installs elyseum-cli, runs it, and comments on a PR with the results"
+description: >-
+  Runs a pinned version of elyseum-cli against your repository and publishes
+  one idempotent PR comment plus one quality-gate check run.
+#
+# Minimum permissions for the consuming workflow:
+#   contents: read, pull-requests: write, checks: write
+# (composite actions cannot declare permissions; see README example)
 inputs:
   github_token:
-    description: 'GitHub API Access Token.'
+    description: "GitHub API access token."
     default: ${{ github.token }}
     required: false
   github_token_actor:
-    description: 'The name of the GitHub app that owns the GitHub API Access Token (see github_token). Used to identify pull request comments created by this action during earlier runs. Has to be set when `github_token` is set to a GitHub app installation token (other than GitHub actions). Otherwise, existing comments will not be updated, but new comments created. Note: this does not change the bot name of the pull request comments. Defaults to "github-actions".'
-    default: 'github-actions'
+    description: >-
+      Login of the actor that owns github_token (e.g. "github-actions[bot]"
+      for the default token, or the GitHub App slug for App installation
+      tokens). Used to find the comment created by earlier runs of this
+      action so it is updated in place.
+    default: "github-actions[bot]"
     required: false
   command:
-    description: "Command to run elyseum-cli with (diff-coverage, coverage, etc.)"
+    description: "elyseum-cli command to run (diff-coverage or coverage)."
     default: "diff-coverage"
+    required: false
   comment-name:
-    description: "Name of the comment to update or create"
+    description: "Identifying name of the PR comment to update or create."
     default: "Elyseum Coverage Reporter"
+    required: false
   workdir:
-    description: "Working directory to run elyseum-cli in"
+    description: "Working directory to run elyseum-cli in."
     default: "."
+    required: false
   result-file-path:
-    description: "Path to the result file"
+    description: "PR comment markdown file produced by the CLI reporter."
     default: "coverage/github.pr.coverage.md"
+    required: false
   annotation-file-path:
-    description: "Path to the result file"
+    description: "Check-run annotations JSON file produced by the CLI reporter."
     default: "coverage/github.pr.annotations.json"
+    required: false
   quality-gate:
-    description: "Quality gate to check against"
+    description: "Changed-line coverage percentage below which the gate warns."
     default: "80"
+    required: false
   quality-gate-fail:
-    description: "Quality gate to fail against"
+    description: "Changed-line coverage percentage below which the gate fails (exit 1)."
     default: "15"
+    required: false
+  elyseum-cli-version:
+    description: "Pinned elyseum-cli version to install from npm."
+    default: "1.0.12"
+    required: false
   use-dev-elyseum-cli:
-    description: "Use the development branch elyseum-cli"
+    description: "Git ref of Dragonshorn-Studios/elyseum-cli to install instead of the pinned npm version (for CLI development)."
     default: ""
+    required: false
 runs:
   using: "composite"
   steps:
+    - name: Guard supported event
+      shell: bash
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/scripts/guard-event.sh"
+
+    - name: Validate inputs
+      shell: bash
+      env:
+        COMMAND: ${{ inputs.command }}
+        QUALITY_GATE: ${{ inputs.quality-gate }}
+        QUALITY_GATE_FAIL: ${{ inputs.quality-gate-fail }}
+        WORKDIR: ${{ inputs.workdir }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/scripts/validate-inputs.sh"
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 20
 
-    - name: Install elyseum-cli
+    - name: Install elyseum-cli (pinned)
       if: ${{ inputs.use-dev-elyseum-cli == '' }}
       shell: bash
-      working-directory: ${{ inputs.workdir }}
-      run: npm install -g @dragonshorn-studios/elyseum-cli
-    
-    - name: Install elyseum-cli from Dragonshorn-Studios/elyseum-cli repository
+      env:
+        CLI_VERSION: ${{ inputs.elyseum-cli-version }}
+      run: npm install -g "@dragonshorn-studios/elyseum-cli@$CLI_VERSION"
+
+    - name: Install elyseum-cli from source
       if: ${{ inputs.use-dev-elyseum-cli != '' }}
       shell: bash
-      working-directory: ${{ inputs.workdir }}
+      env:
+        CLI_REF: ${{ inputs.use-dev-elyseum-cli }}
       run: |
-        git clone https://github.com/Dragonshorn-Studios/elyseum-cli.git /tmp/elyseum-cli
+        git clone --depth 1 --branch "$CLI_REF" https://github.com/Dragonshorn-Studios/elyseum-cli.git /tmp/elyseum-cli
         cd /tmp/elyseum-cli
-        git checkout ${{ inputs.use-dev-elyseum-cli }}
         npm install
-        npm link .
+        npm run build
+        npm install -g .
 
     - name: Run elyseum-cli
+      id: cli
       shell: bash
+      continue-on-error: true
       working-directory: ${{ inputs.workdir }}
-      run: elyseum-cli ${{ inputs.command }} --reporter.coverage.github-pr-comment.comment-name "${{ inputs.comment-name }}" --reporter.coverage.github-pr-comment.comment-file-path "${{ inputs.result-file-path }}" --reporter.coverage=github-pr-comment --reporter.coverage.github-pr-comment.create-annotations --reporter.coverage.github-pr-comment.quality-gate "${{ inputs.quality-gate }}" --reporter.coverage.github-pr-comment.quality-gate-fail ${{ inputs.quality-gate-fail }}
       env:
+        COMMAND: ${{ inputs.command }}
         GITHUB_BASE_REF: ${{ github.base_ref }}
         GITHUB_SHA: ${{ github.sha }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
-        GITHUB_EVENT_NUMBER: ${{ github.event.number }}
+        GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+        COMMENT_NAME: ${{ inputs.comment-name }}
+        RESULT_FILE_PATH: ${{ inputs.result-file-path }}
+        ANNOTATION_FILE_PATH: ${{ inputs.annotation-file-path }}
+        QUALITY_GATE: ${{ inputs.quality-gate }}
+        QUALITY_GATE_FAIL: ${{ inputs.quality-gate-fail }}
+      run: |
+        # set +e: the CLI's exit code is captured as data (1 = failed gate);
+        # the Fail on quality-gate failure step enforces it afterwards.
+        set +e
+        elyseum-cli "$COMMAND" \
+          --reporter.coverage github-pr-comment \
+          --reporter.coverage.github-pr-comment.comment-name "$COMMENT_NAME" \
+          --reporter.coverage.github-pr-comment.comment-file-path "$RESULT_FILE_PATH" \
+          --reporter.coverage.github-pr-comment.annotation-file-path "$ANNOTATION_FILE_PATH" \
+          --reporter.coverage.github-pr-comment.create-annotations \
+          --reporter.coverage.github-pr-comment.quality-gate "$QUALITY_GATE" \
+          --reporter.coverage.github-pr-comment.quality-gate-fail "$QUALITY_GATE_FAIL"
+        cli_exit=$?
+        echo "exit-code=$cli_exit" >> "$GITHUB_OUTPUT"
+        exit "$cli_exit"
 
-    - name: Find Comment
-      uses: peter-evans/find-comment@v3
-      id: fc
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        comment-author: 'github-actions[bot]'
-        body-includes: ${{ inputs.comment-name }}
+    - name: Verify CLI outputs
+      shell: bash
+      env:
+        WORKDIR: ${{ inputs.workdir }}
+        RESULT_FILE_PATH: ${{ inputs.result-file-path }}
+        ANNOTATION_FILE_PATH: ${{ inputs.annotation-file-path }}
+        CLI_EXIT_CODE: ${{ steps.cli.outputs.exit-code }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/scripts/verify-outputs.sh"
 
-    - name: Create comment
-      uses: peter-evans/create-or-update-comment@v4
-      with:
-        comment-id: ${{ steps.fc.outputs.comment-id }}
-        issue-number: ${{ github.event.number }}
-        body-path: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
-        edit-mode: replace
-        
+    
+
     - name: Parse annotations
       id: parse-annotations
       shell: bash
+      env:
+        WORKDIR: ${{ inputs.workdir }}
+        ANNOTATION_FILE_PATH: ${{ inputs.annotation-file-path }}
       run: |
-        echo "annotations=$(jq -c .annotations < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "name=$(jq -r .name < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "title=$(jq -r '.title' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "summary=$(jq -r '.summary' < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "status=$(jq -r .status < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
-        echo "conclusion=$(jq -r .conclusion < ${{ inputs.workdir }}/${{ inputs.annotation-file-path }})" >> $GITHUB_OUTPUT
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/scripts/parse-annotations.sh" "$WORKDIR/$ANNOTATION_FILE_PATH"
 
-    - name: 📢 Update Check Run
+    - name: Find comment
+      uses: peter-evans/find-comment@v3
+      id: find-comment
+      with:
+        token: ${{ inputs.github_token }}
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: ${{ inputs.github_token_actor }}
+        body-includes: ${{ inputs.comment-name }}
+
+    - name: Create or update comment
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        token: ${{ inputs.github_token }}
+        comment-id: ${{ steps.find-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body-path: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
+        edit-mode: replace
+
+    - name: Update check run
       uses: LouisBrunner/checks-action@v2.0.0
-      if: always()
       with:
         token: ${{ inputs.github_token }}
         conclusion: ${{ steps.parse-annotations.outputs.conclusion }}
         status: ${{ steps.parse-annotations.outputs.status }}
-        name: 🚦 Quality Gate
-        output: |
-          {"summary":"${{ steps.parse-annotations.outputs.summary }}"}
+        name: Elyseum Quality Gate
+        output: ${{ steps.parse-annotations.outputs.check-output }}
         output_text_description_file: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
-        annotations: |
-          ${{ steps.parse-annotations.outputs.annotations }}
+        annotations: ${{ steps.parse-annotations.outputs.annotations }}
 
+    - name: Fail on quality-gate failure
+      if: always() && steps.cli.outputs.exit-code != ''
+      shell: bash
+      env:
+        CLI_EXIT_CODE: ${{ steps.cli.outputs.exit-code }}
+      run: |
+        if [ "$CLI_EXIT_CODE" = "1" ]; then
+          echo "::error::Quality gate failed."
+          exit 1
+        fi
+        if [ "$CLI_EXIT_CODE" != "0" ]; then
+          echo "::error::elyseum-cli failed with exit code $CLI_EXIT_CODE."
+          exit 1
+        fi
