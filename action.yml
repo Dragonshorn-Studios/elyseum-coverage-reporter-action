@@ -107,6 +107,7 @@ runs:
       continue-on-error: true
       working-directory: ${{ inputs.workdir }}
       env:
+        COMMAND: ${{ inputs.command }}
         GITHUB_BASE_REF: ${{ github.base_ref }}
         GITHUB_SHA: ${{ github.sha }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
@@ -119,6 +120,9 @@ runs:
         QUALITY_GATE: ${{ inputs.quality-gate }}
         QUALITY_GATE_FAIL: ${{ inputs.quality-gate-fail }}
       run: |
+        # set +e: the CLI's exit code is captured as data (1 = failed gate);
+        # the Fail on quality-gate failure step enforces it afterwards.
+        set +e
         elyseum-cli "$COMMAND" \
           --reporter.coverage github-pr-comment \
           --reporter.coverage.github-pr-comment.comment-name "$COMMENT_NAME" \
@@ -127,7 +131,9 @@ runs:
           --reporter.coverage.github-pr-comment.create-annotations \
           --reporter.coverage.github-pr-comment.quality-gate "$QUALITY_GATE" \
           --reporter.coverage.github-pr-comment.quality-gate-fail "$QUALITY_GATE_FAIL"
-        echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+        cli_exit=$?
+        echo "exit-code=$cli_exit" >> "$GITHUB_OUTPUT"
+        exit "$cli_exit"
 
     - name: Verify CLI outputs
       shell: bash
