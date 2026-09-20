@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Test double for curl: records the invocation to $FAKE_CURL_LOG, writes
+# $FAKE_CURL_BODY to the -o target file, and prints $FAKE_CURL_CODE
+# (default 201) — the value -w '%{http_code}' would produce. Setting
+# FAKE_CURL_FAIL=1 simulates a network-level failure (curl exit 7).
+# Performs no network traffic.
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "-o" ]; then
+    printf '%s' "${FAKE_CURL_BODY:-}" > "$arg"
+  fi
+  prev="$arg"
+done
+
+if [ -n "${FAKE_CURL_LOG:-}" ]; then
+  printf '%s\n' "$@" >> "$FAKE_CURL_LOG"
+fi
+
+if [ "${FAKE_CURL_FAIL:-}" = "1" ]; then
+  exit 7
+fi
+
+printf '%s' "${FAKE_CURL_CODE:-201}"

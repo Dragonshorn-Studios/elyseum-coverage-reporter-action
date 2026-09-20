@@ -1,7 +1,8 @@
 name: "Elyseum Coverage Reporter"
 description: >-
   Runs a pinned version of elyseum-cli against your repository and publishes
-  one idempotent PR comment plus one quality-gate check run.
+  one idempotent PR comment plus one quality-gate check run, and optionally
+  uploads the v1 result envelope to an Elyseum server.
 #
 # Minimum permissions for the consuming workflow:
 #   contents: read, pull-requests: write, checks: write
@@ -55,6 +56,42 @@ inputs:
     description: "Git ref of Dragonshorn-Studios/elyseum-cli to install instead of the pinned npm version (for CLI development)."
     default: ""
     required: false
+  elyseum-server:
+    description: "Elyseum server origin (e.g. https://elyseum.example.com). Upload is disabled when empty."
+    default: ""
+    required: false
+  elyseum-project-slug:
+    description: "Project slug on the Elyseum server."
+    default: ""
+    required: false
+  elyseum-ingest-token:
+    description: "Project-scoped ingest token (GitHub Secrets). Never logged or echoed."
+    default: ""
+    required: false
+  elyseum-strict-upload:
+    description: "When true, an upload failure fails the Action; otherwise it produces a ::warning."
+    default: "false"
+    required: false
+  envelope-path:
+    description: "Path (relative to workdir) where the v1 result envelope is written before upload."
+    default: "envelope.json"
+    required: false
+  envelope-tests-format:
+    description: "Test report format for the envelope: vitest-json | junit | go-test-json. Requires envelope-tests-input."
+    default: ""
+    required: false
+  envelope-tests-input:
+    description: "Test report path for the envelope. Requires envelope-tests-format."
+    default: ""
+    required: false
+  envelope-coverage-format:
+    description: "Coverage report format for the envelope: lcov | clover | go-coverprofile. Requires envelope-coverage-input."
+    default: ""
+    required: false
+  envelope-coverage-input:
+    description: "Coverage report path for the envelope. Requires envelope-coverage-format."
+    default: ""
+    required: false
 runs:
   using: "composite"
   steps:
@@ -73,6 +110,10 @@ runs:
         QUALITY_GATE: ${{ inputs.quality-gate }}
         QUALITY_GATE_FAIL: ${{ inputs.quality-gate-fail }}
         WORKDIR: ${{ inputs.workdir }}
+        ENVELOPE_TESTS_FORMAT: ${{ inputs.envelope-tests-format }}
+        ENVELOPE_TESTS_INPUT: ${{ inputs.envelope-tests-input }}
+        ENVELOPE_COVERAGE_FORMAT: ${{ inputs.envelope-coverage-format }}
+        ENVELOPE_COVERAGE_INPUT: ${{ inputs.envelope-coverage-input }}
       run: |
         set -euo pipefail
         "$GITHUB_ACTION_PATH/scripts/validate-inputs.sh"
@@ -146,8 +187,6 @@ runs:
         set -euo pipefail
         "$GITHUB_ACTION_PATH/scripts/verify-outputs.sh"
 
-    
-
     - name: Parse annotations
       id: parse-annotations
       shell: bash
@@ -186,6 +225,73 @@ runs:
         output: ${{ steps.parse-annotations.outputs.check-output }}
         output_text_description_file: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
         annotations: ${{ steps.parse-annotations.outputs.annotations }}
+
+    - name: Emit envelope
+      id: emit
+      if: ${{ inputs.elyseum-server != '' }}
+      continue-on-error: true
+      shell: bash
+      working-directory: ${{ inputs.workdir }}
+      env:
+        ENVELOPE_PATH: ${{ inputs.envelope-path }}
+        TESTS_FORMAT: ${{ inputs.envelope-tests-format }}
+        TESTS_INPUT: ${{ inputs.envelope-tests-input }}
+        COVERAGE_FORMAT: ${{ inputs.envelope-coverage-format }}
+        COVERAGE_INPUT: ${{ inputs.envelope-coverage-input }}
+        # Map the check-run conclusion onto the envelope's gate vocabulary.
+        CHECK_CONCLUSION: ${{ steps.parse-annotations.outputs.conclusion }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        GITHUB_JOB: ${{ github.job }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        case "$CHECK_CONCLUSION" in
+          success) gate_conclusion="passed" ;;
+          failure) gate_conclusion="failed" ;;
+          *) gate_conclusion="unknown" ;;
+        esac
+        args=(emit-envelope
+          --emit-envelope.out "$ENVELOPE_PATH"
+          --emit-envelope.quality-gate-conclusion "$gate_conclusion")
+        if [ -n "$TESTS_FORMAT" ]; then
+          args+=(--emit-envelope.tests-format "$TESTS_FORMAT" --emit-envelope.tests-input "$TESTS_INPUT")
+        fi
+        if [ -n "$COVERAGE_FORMAT" ]; then
+          args+=(--emit-envelope.coverage-format "$COVERAGE_FORMAT" --emit-envelope.coverage-input "$COVERAGE_INPUT")
+        fi
+        # set +e: emission failure is an upload-path failure (warned or
+        # enforced by the next step), distinct from the quality-gate verdict.
+        set +e
+        elyseum-cli "${args[@]}"
+        cli_exit=$?
+        echo "exit-code=$cli_exit" >> "$GITHUB_OUTPUT"
+        exit "$cli_exit"
+
+    - name: Enforce envelope emission
+      if: ${{ steps.emit.outcome == 'failure' }}
+      shell: bash
+      env:
+        STRICT_MODE: ${{ inputs.elyseum-strict-upload }}
+      run: |
+        if [ "$STRICT_MODE" = "true" ]; then
+          echo "::error::Envelope emission failed; strict upload is enabled. See the 'Emit envelope' step."
+          exit 1
+        fi
+        echo "::warning::Envelope emission failed; skipping the Elyseum upload. Set elyseum-strict-upload to fail the run instead."
+
+    - name: Upload envelope to Elyseum
+      if: ${{ steps.emit.outcome == 'success' }}
+      shell: bash
+      env:
+        ENVELOPE_PATH: ${{ inputs.workdir }}/${{ inputs.envelope-path }}
+        SERVER_ORIGIN: ${{ inputs.elyseum-server }}
+        PROJECT_SLUG: ${{ inputs.elyseum-project-slug }}
+        INGEST_TOKEN: ${{ inputs.elyseum-ingest-token }}
+        STRICT_MODE: ${{ inputs.elyseum-strict-upload }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/scripts/upload-envelope.sh"
 
     - name: Fail on quality-gate failure
       if: always() && steps.cli.outputs.exit-code != ''

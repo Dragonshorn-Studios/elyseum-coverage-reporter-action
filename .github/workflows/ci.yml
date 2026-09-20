@@ -28,7 +28,7 @@ jobs:
           doc = yaml.safe_load(open('action.yml'))
           assert doc['runs']['using'] == 'composite', 'must be a composite action'
           inputs = doc['inputs']
-          for required in ['github_token', 'github_token_actor', 'command', 'comment-name', 'workdir', 'result-file-path', 'annotation-file-path', 'quality-gate', 'quality-gate-fail', 'elyseum-cli-version', 'use-dev-elyseum-cli']:
+          for required in ['github_token', 'github_token_actor', 'command', 'comment-name', 'workdir', 'result-file-path', 'annotation-file-path', 'quality-gate', 'quality-gate-fail', 'elyseum-cli-version', 'use-dev-elyseum-cli', 'envelope-path', 'envelope-tests-format', 'envelope-tests-input', 'envelope-coverage-format', 'envelope-coverage-input', 'elyseum-server', 'elyseum-project-slug', 'elyseum-ingest-token', 'elyseum-strict-upload']:
               assert required in inputs, f'missing input: {required}'
           node_version = None
           for step in doc['runs']['steps']:

@@ -35,7 +35,8 @@ jobs:
         continue-on-error: true
         with:
           github_token: ${{ github.token }}
-          command: diff-coverage
+          # Whole-file coverage: the 33% fixture is judged independently of
+          # the PR diff.
           command: coverage
           quality-gate: "50"
           quality-gate-fail: "40"
