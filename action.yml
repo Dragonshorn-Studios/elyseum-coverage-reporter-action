@@ -227,6 +227,9 @@ runs:
         output_text_description_file: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
         annotations: ${{ steps.parse-annotations.outputs.annotations }}
 
+    # Run facts come from the runner's default GITHUB_RUN_ID /
+    # GITHUB_RUN_ATTEMPT / GITHUB_JOB / GITHUB_REPOSITORY environment,
+    # which elyseum-cli reads directly to build the run's identity and URL.
     - name: Emit envelope
       id: emit
       if: ${{ inputs.elyseum-server != '' }}
@@ -239,34 +242,11 @@ runs:
         TESTS_INPUT: ${{ inputs.envelope-tests-input }}
         COVERAGE_FORMAT: ${{ inputs.envelope-coverage-format }}
         COVERAGE_INPUT: ${{ inputs.envelope-coverage-input }}
-        # Map the check-run conclusion onto the envelope's gate vocabulary.
+        # Mapped onto the envelope's gate vocabulary by the script.
         CHECK_CONCLUSION: ${{ steps.parse-annotations.outputs.conclusion }}
-        # Run facts come from the runner's default GITHUB_RUN_ID /
-        # GITHUB_RUN_ATTEMPT / GITHUB_JOB / GITHUB_REPOSITORY environment,
-        # which the CLI reads directly to build the run's identity and URL.
       run: |
         set -euo pipefail
-        case "$CHECK_CONCLUSION" in
-          success) gate_conclusion="passed" ;;
-          failure) gate_conclusion="failed" ;;
-          *) gate_conclusion="unknown" ;;
-        esac
-        args=(emit-envelope
-          --emit-envelope.out "$ENVELOPE_PATH"
-          --emit-envelope.quality-gate-conclusion "$gate_conclusion")
-        if [ -n "$TESTS_FORMAT" ]; then
-          args+=(--emit-envelope.tests-format "$TESTS_FORMAT" --emit-envelope.tests-input "$TESTS_INPUT")
-        fi
-        if [ -n "$COVERAGE_FORMAT" ]; then
-          args+=(--emit-envelope.coverage-format "$COVERAGE_FORMAT" --emit-envelope.coverage-input "$COVERAGE_INPUT")
-        fi
-        # set +e: emission failure is an upload-path failure (warned or
-        # enforced by the next step), distinct from the quality-gate verdict.
-        set +e
-        elyseum-cli "${args[@]}"
-        cli_exit=$?
-        echo "exit-code=$cli_exit" >> "$GITHUB_OUTPUT"
-        exit "$cli_exit"
+        "$GITHUB_ACTION_PATH/scripts/emit-envelope.sh"
 
     - name: Enforce envelope emission
       if: ${{ steps.emit.outcome == 'failure' }}
