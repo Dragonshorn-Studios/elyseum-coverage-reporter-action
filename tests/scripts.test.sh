@@ -44,7 +44,8 @@ ENVELOPE_TMP="$(mktemp)"
 CURL_LOG="$(mktemp)"
 trap 'rm -rf "$OUTPUT_TMP" "$FAKE_BIN" "$ENVELOPE_TMP" "$CURL_LOG"' EXIT
 
-# The empty-file fixture is created here: git cannot track empty files.
+# The empty fixture is created at runtime so a fresh checkout always has
+# it; .gitignore keeps it out of git status.
 : > "$FIXTURES/annotations-empty.json"
 
 # GitHub runners ship jq; this dev machine may not. Skip jq-dependent tests
@@ -103,6 +104,12 @@ assert_upload() {
   fi
 }
 
+# Logs the recorded curl invocation with the token redacted, so failure
+# output never trains the "token in logs" habit.
+show_curl_log() {
+  sed "s|$UPLOAD_TOKEN|[REDACTED]|g" "$CURL_LOG"
+}
+
 # Misconfiguration fails regardless of strict mode.
 assert_upload "missing envelope path fails" 1 "ENVELOPE_PATH is required but not set" \
   ENVELOPE_PATH="" FAKE_CURL_CODE=201
@@ -130,7 +137,7 @@ if grep -qFx "https://elyseum.example.com/api/v1/projects/my-project/runs" "$CUR
   grep -qFx "Authorization: Bearer $UPLOAD_TOKEN" "$CURL_LOG"; then
   echo "ok: curl call carries the ingest URL and bearer header"
 else
-  echo "FAIL: curl call carries the ingest URL and bearer header ($(cat "$CURL_LOG"))"
+  echo "FAIL: curl call carries the ingest URL and bearer header ($(show_curl_log))"
   FAILURES=$((FAILURES + 1))
 fi
 

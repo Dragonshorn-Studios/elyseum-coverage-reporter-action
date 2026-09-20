@@ -69,7 +69,7 @@ inputs:
     default: ""
     required: false
   elyseum-strict-upload:
-    description: "When true, an upload failure fails the Action; otherwise it produces a ::warning."
+    description: "When true, an envelope-emission or upload failure fails the Action; otherwise it produces a ::warning."
     default: "false"
     required: false
   envelope-path:

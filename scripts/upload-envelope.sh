@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Uploads the v1 result envelope to the configured Elyseum project
-# (POST /api/v1/projects/{slug}/runs). The host deduplicates by run
-# identity, so a single POST per job is idempotent across re-runs.
+# (POST /api/v1/projects/{slug}/runs). The host keys a run on provider +
+# run id + job + attempt, so retries of the same CI attempt update the
+# same stored run (201 created, then 200 updated); a workflow re-run is a
+# new attempt and its own run.
 #
 # Inputs (env):
 #   ENVELOPE_PATH   - path to the v1 envelope JSON file (required)
@@ -63,8 +65,8 @@ elif [ "$http_code" = "200" ]; then
   exit 0
 else
   # The 422 body carries the host's machine-readable validation error; a
-  # truncated snippet makes the warning actionable. It never contains the
-  # ingest token.
+  # truncated snippet makes the warning actionable. The ingest token never
+  # appears in it — it travels only in the Authorization header.
   body_snippet=""
   if [ -s "$RESPONSE_BODY" ]; then
     body_snippet=" Server said: $(head -c 300 "$RESPONSE_BODY" | tr -d '\r\n')."
@@ -80,7 +82,7 @@ else
   esac
 fi
 
-if [ "$STRICT_MODE" = "true" ]; then
+if [ "${STRICT_MODE:-}" = "true" ]; then
   echo "::error::$message"
   exit 1
 fi

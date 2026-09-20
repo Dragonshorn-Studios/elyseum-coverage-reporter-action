@@ -52,7 +52,7 @@ check_pair "envelope-tests" "$ENVELOPE_TESTS_FORMAT" "$ENVELOPE_TESTS_INPUT"
 check_pair "envelope-coverage" "$ENVELOPE_COVERAGE_FORMAT" "$ENVELOPE_COVERAGE_INPUT"
 
 # Same slug grammar the host enforces (ProjectController rules); a bad slug
-# here would otherwise surface as a confusing curl/404 failure at upload.
+# here would otherwise surface as a confusing curl or 404 failure at upload.
 # Absence is fine (upload is opt-in); upload-envelope.sh requires it then.
 if [ -n "$PROJECT_SLUG" ] && ! [[ "$PROJECT_SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
   fail "elyseum-project-slug must be lowercase alphanumerics separated by single hyphens (got '$PROJECT_SLUG')."
