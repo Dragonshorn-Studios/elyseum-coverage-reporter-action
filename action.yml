@@ -44,7 +44,7 @@ inputs:
     default: "80"
     required: false
   quality-gate-fail:
-    description: "Changed-line coverage percentage at or below which the gate fails (exit 1)."
+    description: "Changed-line coverage percentage below which the gate fails (exit 1)."
     default: "15"
     required: false
   elyseum-cli-version:
@@ -146,16 +146,7 @@ runs:
         set -euo pipefail
         "$GITHUB_ACTION_PATH/scripts/verify-outputs.sh"
 
-    - name: Verify CLI outputs
-      shell: bash
-      env:
-        WORKDIR: ${{ inputs.workdir }}
-        RESULT_FILE_PATH: ${{ inputs.result-file-path }}
-        ANNOTATION_FILE_PATH: ${{ inputs.annotation-file-path }}
-        CLI_EXIT_CODE: ${{ steps.cli.outputs.exit-code }}
-      run: |
-        set -euo pipefail
-        "$GITHUB_ACTION_PATH/scripts/verify-outputs.sh"
+    
 
     - name: Parse annotations
       id: parse-annotations
@@ -171,6 +162,7 @@ runs:
       uses: peter-evans/find-comment@v3
       id: find-comment
       with:
+        token: ${{ inputs.github_token }}
         issue-number: ${{ github.event.pull_request.number }}
         comment-author: ${{ inputs.github_token_actor }}
         body-includes: ${{ inputs.comment-name }}
@@ -178,6 +170,7 @@ runs:
     - name: Create or update comment
       uses: peter-evans/create-or-update-comment@v4
       with:
+        token: ${{ inputs.github_token }}
         comment-id: ${{ steps.find-comment.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
         body-path: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
@@ -190,13 +183,12 @@ runs:
         conclusion: ${{ steps.parse-annotations.outputs.conclusion }}
         status: ${{ steps.parse-annotations.outputs.status }}
         name: Elyseum Quality Gate
-        output: |
-          {"summary":"${{ steps.parse-annotations.outputs.summary }}"}
+        output: ${{ steps.parse-annotations.outputs.check-output }}
         output_text_description_file: ${{ inputs.workdir }}/${{ inputs.result-file-path }}
         annotations: ${{ steps.parse-annotations.outputs.annotations }}
 
     - name: Fail on quality-gate failure
-      if: always()
+      if: always() && steps.cli.outputs.exit-code != ''
       shell: bash
       env:
         CLI_EXIT_CODE: ${{ steps.cli.outputs.exit-code }}

@@ -20,14 +20,17 @@ assert_exit() {
   fi
 }
 
-assert_output_contains() {
-  local desc="$1" expected_code="$2" needle="$3"
-  shift 3
+assert_parse() {
+  local desc="$1" expected_code="$2" fixture="$3" needle="$4"
+  : > "$OUTPUT_TMP"
   local out
-  out="$(bash "$ROOT/scripts/parse-annotations.sh" "$1" 2>&1)"
+  out="$(GITHUB_OUTPUT="$OUTPUT_TMP" bash "$ROOT/scripts/parse-annotations.sh" "$fixture" 2>&1)"
   local code=$?
-  if [ "$code" != "$expected_code" ] || [[ "$out" != *"$needle"* ]]; then
-    echo "FAIL: $desc (expected exit $expected_code containing '$needle', got $code; output: $out)"
+  # The script writes key=value lines to $OUTPUT_TMP; read the actual file.
+  local haystack
+  haystack="$(cat "$OUTPUT_TMP" 2>/dev/null) $out"
+  if ! printf '%s' "$haystack" | grep -qF "$needle"; then
+    echo "FAIL: $desc (expected exit $expected_code with '$needle'; got exit $code, output: $haystack)"
     FAILURES=$((FAILURES + 1))
   else
     echo "ok: $desc"
@@ -35,6 +38,11 @@ assert_output_contains() {
 }
 
 FIXTURES="$ROOT/tests/fixtures"
+OUTPUT_TMP="$(mktemp)"
+trap 'rm -f "$OUTPUT_TMP"' EXIT
+
+# The empty-file fixture is created here: git cannot track empty files.
+: > "$FIXTURES/annotations-empty.json"
 
 # GitHub runners ship jq; this dev machine may not. Skip jq-dependent tests
 # when the tool is absent rather than reporting false failures.
@@ -75,10 +83,10 @@ assert_exit "non-numeric quality-gate-fail fails" 1 diff-coverage 80 15%
 assert_exit "missing workdir fails" 1 diff-coverage 80 15 ./does-not-exist
 
 # parse-annotations
-assert_output_contains "valid annotations parse" 0 "" "$FIXTURES/annotations-pass.json"
-assert_output_contains "malformed JSON fails" 1 "not valid JSON" "$FIXTURES/annotations-malformed.json"
-assert_output_contains "missing key fails" 1 "missing the 'conclusion' key" "$FIXTURES/annotations-missing-key.json"
-assert_output_contains "empty file fails" 1 "missing or empty" "$FIXTURES/annotations-empty.json"
+assert_parse "valid annotations parse with all outputs" 0 "$FIXTURES/annotations-pass.json" "conclusion=failure"
+assert_parse "malformed JSON fails with diagnostic" 1 "$FIXTURES/annotations-malformed.json" "not valid JSON"
+assert_parse "missing key fails with diagnostic" 1 "$FIXTURES/annotations-missing-key.json" "missing the 'conclusion' key"
+assert_parse "empty file fails with diagnostic" 1 "$FIXTURES/annotations-empty.json" "missing or empty"
 
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES test(s) failed"

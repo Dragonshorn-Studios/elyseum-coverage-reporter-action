@@ -32,7 +32,12 @@ done
   echo "annotations=$(jq -c '.annotations' "$FILE")"
   echo "name=$(jq -r '.name' "$FILE")"
   echo "title=$(jq -r '.title' "$FILE")"
-  echo "summary=$(jq -j '.summary' "$FILE")"
+  # Heredoc form keeps multi-line summaries intact in $GITHUB_OUTPUT.
+  echo "summary<<__ELYSEUM_SUMMARY__"
+  jq -r '.summary' "$FILE"
+  echo "__ELYSEUM_SUMMARY__"
   echo "status=$(jq -r '.status' "$FILE")"
   echo "conclusion=$(jq -r '.conclusion' "$FILE")"
+  # Ready-made JSON for checks-action's output (avoids shell interpolation).
+  echo "check-output=$(jq -c '{summary: .summary}' "$FILE")"
 } >> "$GITHUB_OUTPUT"

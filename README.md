@@ -21,7 +21,7 @@ The CLI is installed from npm at a pinned version (input
 | `result-file-path` | `coverage/github.pr.coverage.md` | Comment markdown produced by the CLI reporter. |
 | `annotation-file-path` | `coverage/github.pr.annotations.json` | Check-run annotations JSON produced by the CLI reporter. |
 | `quality-gate` | `80` | Changed-line coverage below this warns. |
-| `quality-gate-fail` | `15` | Changed-line coverage at or below this fails the run (exit 1). |
+| `quality-gate-fail` | `15` | Changed-line coverage strictly below this fails the run (exit 1). |
 | `elyseum-cli-version` | `1.0.12` | Pinned npm version of elyseum-cli. |
 | `use-dev-elyseum-cli` | *(empty)* | Git ref of elyseum-cli to build from source instead (for CLI development). |
 
@@ -77,6 +77,10 @@ jobs:
           command: diff-coverage
           quality-gate: "80"
           quality-gate-fail: "15"
+
+concurrency:
+  group: elyseum-coverage-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 ```
 
 Examples always reference a release tag (`@v1`, or an immutable `@v1.2.3`) —

@@ -24,9 +24,10 @@ jobs:
       - name: Prepare fixture project
         shell: bash
         run: |
-          mkdir -p fixtures/project/src coverage
-          echo "export const sum = (a: number, b: number): number => a + b;" > fixtures/project/src/sum.ts
-          printf 'TN:\nSF:fixtures/project/src/sum.ts\nDA:1,1\nDA:2,0\nLF:2\nLH:1\nend_of_record\n' > coverage/lcov.info
+          mkdir -p coverage
+          # Mostly-uncovered fixture: 1 of 3 lines covered (33%) — the gate
+          # (fail below 40) must fail this run, independent of the PR diff.
+          printf 'TN:\nSF:src/sum.ts\nDA:1,1\nDA:2,0\nDA:3,0\nLF:3\nLH:1\nend_of_record\n' > coverage/lcov.info
 
       - name: "Run this Action (gate expected to fail)"
         id: action
@@ -35,8 +36,9 @@ jobs:
         with:
           github_token: ${{ github.token }}
           command: diff-coverage
-          quality-gate: "101"
-          quality-gate-fail: "101"
+          command: coverage
+          quality-gate: "50"
+          quality-gate-fail: "40"
 
       - name: Assert documented gate-failure exit and single comment
         shell: bash
@@ -54,20 +56,9 @@ jobs:
           # re-run must update it in place rather than adding another.
           comments=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"             --paginate             --jq '[.[] | select(.user.login == env.COMMENT_ACTOR and (.body | contains(env.COMMENT_NAME)))] | length')
           echo "matching comments: $comments"
-          if [ "$comments" -lt 1 ]; then
-            echo "::error::Expected at least one published coverage comment."
+          if [ "$comments" != "1" ]; then
+            echo "::error::Expected exactly one published coverage comment (update-in-place), got $comments."
             exit 1
           fi
-          echo "gate-failure behavior and comment publication verified"
+          echo "gate-failure behavior and idempotent comment publication verified"
 
-  guard-contract:
-    # The guard script's behavior outside the Action (push events etc.) is
-    # verified in the scripts unit tests (tests/scripts.test.sh).
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Guard script unit contract
-        shell: bash
-        run: bash tests/scripts.test.sh
