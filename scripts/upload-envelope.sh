@@ -9,7 +9,6 @@
 #   PROJECT_SLUG    - project identifier slug (required)
 #   INGEST_TOKEN    - project-scoped ingest token (required; never echoed)
 #   STRICT_MODE     - "true" fails the Action on upload failure (default: warn)
-#   GITHUB_OUTPUT   - step outputs file (optional)
 #
 # Exit codes:
 #   0 - upload succeeded, or a failure was reported non-strictly (warned)
@@ -45,7 +44,6 @@ http_code=$(curl -s -o "$RESPONSE_BODY" -w '%{http_code}' \
   --retry 3 \
   --retry-delay 2 \
   --retry-connrefused \
-  -X POST \
   -H "Authorization: Bearer $INGEST_TOKEN" \
   -H "Content-Type: application/json" \
   --data-binary "@$ENVELOPE_PATH" \
@@ -53,16 +51,16 @@ http_code=$(curl -s -o "$RESPONSE_BODY" -w '%{http_code}' \
 curl_exit=$?
 set -e
 
-success=false
 message=""
 
 if [ "$curl_exit" -ne 0 ]; then
   message="Upload failed: could not reach $SERVER_ORIGIN (curl exit $curl_exit)."
 elif [ "$http_code" = "201" ]; then
-  success=true
+  echo "Envelope uploaded (HTTP 201)."
+  exit 0
 elif [ "$http_code" = "200" ]; then
-  success=true
-  message="idempotent redelivery: the run already existed and was updated."
+  echo "Envelope uploaded (HTTP 200): idempotent redelivery, the run already existed and was updated."
+  exit 0
 else
   # The 422 body carries the host's machine-readable validation error; a
   # truncated snippet makes the warning actionable. It never contains the
@@ -80,18 +78,6 @@ else
     5*) message="Elyseum server error (HTTP $http_code). Check the server's health." ;;
     *) message="Upload failed with unexpected HTTP $http_code." ;;
   esac
-fi
-
-if [ -n "${GITHUB_OUTPUT:-}" ]; then
-  {
-    echo "uploaded=$success"
-    echo "http_code=${http_code:-000}"
-  } >> "$GITHUB_OUTPUT"
-fi
-
-if [ "$success" = "true" ]; then
-  echo "Envelope uploaded (HTTP ${http_code:-000}).${message:+ $message}"
-  exit 0
 fi
 
 if [ "$STRICT_MODE" = "true" ]; then

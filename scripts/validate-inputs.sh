@@ -36,8 +36,9 @@ if [ ! -d "$WORKDIR" ]; then
 fi
 
 # Envelope adapter inputs are optional, but each format needs its report
-# path and only known formats are accepted (matching the CLI's adapter
-# registry, so callers get the error at the Action boundary).
+# path. Unknown formats are NOT rejected here: the CLI's adapter registry
+# owns the format list (its own error is explicit), and duplicating the
+# list would block use-dev-elyseum-cli branches that add adapters.
 check_pair() {
   local label="$1" format="$2" input="$3"
   if [ -z "$format" ] && [ -z "$input" ]; then
@@ -50,22 +51,11 @@ check_pair() {
 check_pair "envelope-tests" "$ENVELOPE_TESTS_FORMAT" "$ENVELOPE_TESTS_INPUT"
 check_pair "envelope-coverage" "$ENVELOPE_COVERAGE_FORMAT" "$ENVELOPE_COVERAGE_INPUT"
 
-case "$ENVELOPE_TESTS_FORMAT" in
-  "" | vitest-json | junit | go-test-json) ;;
-  *) fail "envelope-tests-format must be one of vitest-json, junit, go-test-json (got '$ENVELOPE_TESTS_FORMAT')." ;;
-esac
-
-case "$ENVELOPE_COVERAGE_FORMAT" in
-  "" | lcov | clover | go-coverprofile) ;;
-  *) fail "envelope-coverage-format must be one of lcov, clover, go-coverprofile (got '$ENVELOPE_COVERAGE_FORMAT')." ;;
-esac
-
 # Same slug grammar the host enforces (ProjectController rules); a bad slug
 # here would otherwise surface as a confusing curl/404 failure at upload.
 # Absence is fine (upload is opt-in); upload-envelope.sh requires it then.
-slug="${PROJECT_SLUG:-}"
-if [ -n "$slug" ] && ! [[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-  fail "elyseum-project-slug must be lowercase alphanumerics separated by single hyphens (got '$slug')."
+if [ -n "$PROJECT_SLUG" ] && ! [[ "$PROJECT_SLUG" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  fail "elyseum-project-slug must be lowercase alphanumerics separated by single hyphens (got '$PROJECT_SLUG')."
 fi
 
 exit 0

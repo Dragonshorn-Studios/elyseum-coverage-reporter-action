@@ -85,17 +85,15 @@ assert_upload() {
   # top of the fixed defaults — expanded words are never treated as
   # assignment prefixes, so a plain inline form cannot express them.
   out="$(
-    export PATH="$FAKE_BIN:$PATH" GITHUB_OUTPUT="$OUTPUT_TMP" FAKE_CURL_LOG="$CURL_LOG" \
+    export PATH="$FAKE_BIN:$PATH" FAKE_CURL_LOG="$CURL_LOG" \
       ENVELOPE_PATH="$ENVELOPE_TMP" SERVER_ORIGIN="https://elyseum.example.com/" \
       PROJECT_SLUG="my-project" INGEST_TOKEN="$UPLOAD_TOKEN" STRICT_MODE=""
     for kv in "$@"; do export "$kv"; done
     bash "$ROOT/scripts/upload-envelope.sh" 2>&1
   )"
   local code=$?
-  local haystack
-  haystack="$(cat "$OUTPUT_TMP" 2>/dev/null) $out"
-  if [ "$code" != "$expected" ] || ! printf '%s' "$haystack" | grep -qF "$needle"; then
-    echo "FAIL: $desc (expected exit $expected with '$needle'; got exit $code, output: $haystack)"
+  if [ "$code" != "$expected" ] || ! printf '%s' "$out" | grep -qF "$needle"; then
+    echo "FAIL: $desc (expected exit $expected with '$needle'; got exit $code, output: $out)"
     FAILURES=$((FAILURES + 1))
   elif printf '%s' "$out" | grep -qF "$UPLOAD_TOKEN"; then
     echo "FAIL: $desc (ingest token leaked into script output)"
@@ -112,21 +110,9 @@ assert_upload "missing envelope file fails" 1 "is missing or empty" \
   ENVELOPE_PATH="./does-not-exist.json" FAKE_CURL_CODE=201
 
 assert_upload "201 created succeeds" 0 "Envelope uploaded (HTTP 201)" FAKE_CURL_CODE=201
-if grep -qF "uploaded=true" "$OUTPUT_TMP"; then
-  echo "ok: 201 sets uploaded=true output"
-else
-  echo "FAIL: 201 sets uploaded=true output ($(cat "$OUTPUT_TMP"))"
-  FAILURES=$((FAILURES + 1))
-fi
 assert_upload "200 idempotent redelivery succeeds" 0 "idempotent redelivery" FAKE_CURL_CODE=200
 
 assert_upload "401 warns in non-strict mode" 0 "::warning::Upload rejected: authentication failed" FAKE_CURL_CODE=401
-if grep -qF "uploaded=false" "$OUTPUT_TMP"; then
-  echo "ok: 401 sets uploaded=false output"
-else
-  echo "FAIL: 401 sets uploaded=false output ($(cat "$OUTPUT_TMP"))"
-  FAILURES=$((FAILURES + 1))
-fi
 assert_upload "401 fails in strict mode" 1 "::error::Upload rejected: authentication failed" \
   FAKE_CURL_CODE=401 STRICT_MODE=true
 
@@ -189,8 +175,6 @@ assert_adapter "both valid pairs pass" 0 go-test-json tests/go.json lcov coverag
 assert_adapter "tests format without input fails" 1 junit "" "" ""
 assert_adapter "tests input without format fails" 1 "" tests/junit.xml "" ""
 assert_adapter "coverage format without input fails" 1 "" "" clover ""
-assert_adapter "unknown tests format fails" 1 tap tests/out.tap "" ""
-assert_adapter "unknown coverage format fails" 1 "" "" sonar coverage/sonar.xml
 assert_adapter "absent project slug passes" 0 "" "" "" "" ""
 assert_adapter "well-formed project slug passes" 0 "" "" "" "" my-project
 assert_adapter "malformed project slug fails" 1 "" "" "" "" "My Project"

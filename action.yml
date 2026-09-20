@@ -241,13 +241,9 @@ runs:
         COVERAGE_INPUT: ${{ inputs.envelope-coverage-input }}
         # Map the check-run conclusion onto the envelope's gate vocabulary.
         CHECK_CONCLUSION: ${{ steps.parse-annotations.outputs.conclusion }}
-        # The CLI's run identity comes from these runner-provided vars;
-        # passed explicitly so the envelope's identity inputs are visible
-        # here rather than implicit in the runner environment.
-        GITHUB_RUN_ID: ${{ github.run_id }}
-        GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
-        GITHUB_JOB: ${{ github.job }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
+        # Run identity (provider, run/job id, attempt, url) comes from the
+        # runner's default GITHUB_RUN_ID / GITHUB_RUN_ATTEMPT / GITHUB_JOB /
+        # GITHUB_REPOSITORY environment, which the CLI reads directly.
       run: |
         set -euo pipefail
         case "$CHECK_CONCLUSION" in
@@ -280,10 +276,10 @@ runs:
         EMIT_EXIT_CODE: ${{ steps.emit.outputs.exit-code }}
       run: |
         if [ "$STRICT_MODE" = "true" ]; then
-          echo "::error::Envelope emission failed (elyseum-cli exit $EMIT_EXIT_CODE); strict upload is enabled. See the 'Emit envelope' step."
+          echo "::error::Envelope emission failed (elyseum-cli exit ${EMIT_EXIT_CODE:-?}); strict upload is enabled. See the 'Emit envelope' step."
           exit 1
         fi
-        echo "::warning::Envelope emission failed (elyseum-cli exit $EMIT_EXIT_CODE); skipping the Elyseum upload. Set elyseum-strict-upload to fail the run instead."
+        echo "::warning::Envelope emission failed (elyseum-cli exit ${EMIT_EXIT_CODE:-?}); skipping the Elyseum upload. Set elyseum-strict-upload to fail the run instead."
 
     - name: Upload envelope to Elyseum
       if: ${{ steps.emit.outcome == 'success' }}
