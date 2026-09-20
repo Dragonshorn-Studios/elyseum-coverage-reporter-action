@@ -79,12 +79,13 @@ jobs:
       - name: Start stub ingest server
         shell: bash
         run: |
-          python3 tests/stub-ingest-server.py 8099 "$PWD/stub-requests.log" &
+          python3 tests/stub-ingest-server.py 8099 "$PWD/stub-requests.log" >stub-server.log 2>&1 &
           for _ in $(seq 1 20); do
             curl -sf http://127.0.0.1:8099/healthz >/dev/null 2>&1 && exit 0
             sleep 0.5
           done
           echo "::error::stub ingest server did not become ready"
+          cat stub-server.log
           exit 1
 
       - name: "Run this Action (upload expected to succeed)"
@@ -95,6 +96,9 @@ jobs:
           # Whole-file coverage: the 33% fixture passes the 30% gate.
           command: coverage
           quality-gate: "30"
+          # Distinct from the other job's comment name (and not a substring
+          # of it) so concurrent jobs never fight over the same comment.
+          comment-name: "Elyseum Upload Stub"
           elyseum-server: http://127.0.0.1:8099
           elyseum-project-slug: stub-project
           # A stub token, never a secret: the assertion greps for it.

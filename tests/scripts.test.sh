@@ -252,15 +252,8 @@ else
   FAILURES=$((FAILURES + 1))
 fi
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo "skip: jq not installed; parse-annotations tests skipped"
-  if [ "$FAILURES" -gt 0 ]; then
-    echo "$FAILURES test(s) failed"
-    exit 1
-  fi
-  echo "all non-jq script tests passed"
-  exit 0
-fi
+# GitHub runners ship jq; this dev machine may not. Only the
+# parse-annotations tests need jq — everything else runs everywhere.
 
 # validate-inputs
 assert_exit "valid inputs pass" 0 diff-coverage 80 15 .
@@ -294,8 +287,9 @@ assert_adapter "tests format without input fails" 1 junit "" "" ""
 assert_adapter "tests input without format fails" 1 "" tests/junit.xml "" ""
 assert_adapter "coverage format without input fails" 1 "" "" clover ""
 assert_adapter "coverage input without format fails" 1 "" "" "" coverage/clover.xml
+# A well-formed slug together with a server is covered by assert_validate
+# ("full upload config passes"); with no server even a good slug fails.
 assert_adapter "absent project slug passes" 0 "" "" "" "" ""
-assert_adapter "well-formed project slug passes" 0 "" "" "" "" my-project
 assert_adapter "malformed project slug fails" 1 "" "" "" "" "My Project"
 assert_adapter "double-hyphen slug fails" 1 "" "" "" "" a--b
 
@@ -332,10 +326,14 @@ assert_validate "explicit false strict mode passes" 0 "" \
   SERVER="https://elyseum.example.com" PROJECT_SLUG="p" INGEST_TOKEN="t" STRICT_MODE="false"
 
 # parse-annotations
-assert_parse "valid annotations parse with all outputs" 0 "$FIXTURES/annotations-pass.json" "conclusion=failure"
-assert_parse "malformed JSON fails with diagnostic" 1 "$FIXTURES/annotations-malformed.json" "not valid JSON"
-assert_parse "missing key fails with diagnostic" 1 "$FIXTURES/annotations-missing-key.json" "missing the 'conclusion' key"
-assert_parse "empty file fails with diagnostic" 1 "$FIXTURES/annotations-empty.json" "missing or empty"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "skip: jq not installed; parse-annotations tests skipped"
+else
+  assert_parse "valid annotations parse with all outputs" 0 "$FIXTURES/annotations-pass.json" "conclusion=failure"
+  assert_parse "malformed JSON fails with diagnostic" 1 "$FIXTURES/annotations-malformed.json" "not valid JSON"
+  assert_parse "missing key fails with diagnostic" 1 "$FIXTURES/annotations-missing-key.json" "missing the 'conclusion' key"
+  assert_parse "empty file fails with diagnostic" 1 "$FIXTURES/annotations-empty.json" "missing or empty"
+fi
 
 if [ "$FAILURES" -gt 0 ]; then
   echo "$FAILURES test(s) failed"
