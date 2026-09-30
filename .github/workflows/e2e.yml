@@ -14,7 +14,8 @@ permissions:
 
 jobs:
   passing-report:
-    runs-on: ubuntu-latest
+    # Self-hosted: private repository, hosted runners bill per minute.
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -63,7 +64,8 @@ jobs:
           echo "gate-failure behavior and idempotent comment publication verified"
 
   upload-report:
-    runs-on: ubuntu-latest
+    # Self-hosted: private repository, hosted runners bill per minute.
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

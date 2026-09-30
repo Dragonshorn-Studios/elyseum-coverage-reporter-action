@@ -11,7 +11,8 @@ permissions:
 
 jobs:
   scripts:
-    runs-on: ubuntu-latest
+    # Self-hosted: private repository, hosted runners bill per minute.
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
