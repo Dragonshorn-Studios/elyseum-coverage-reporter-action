@@ -12,7 +12,7 @@ permissions:
 jobs:
   scripts:
     # Self-hosted (docker-labeled): private repository, hosted runners bill per minute.
-    # Runner prerequisites: bash, curl, python3, git, gh (e2e asserts), Node via setup-node.
+    # Runner prerequisites: bash, curl, python3, git, Node via setup-node.
     runs-on: [self-hosted, docker]
     steps:
       - name: Checkout code
