@@ -8,9 +8,7 @@ A thin GitHub Action that runs a pinned version of
 [`elyseum-cli`](https://github.com/Dragonshorn-Studios/elyseum-cli) on your
 pull requests and publishes exactly one PR comment plus one quality-gate
 check run — and optionally uploads the versioned result envelope to your
-self-hosted [Elyseum](https://github.com/Dragonshorn-Studios/elyseum)
-instance, so the PR feedback and the hosted history receive identical
-facts.
+[Elyseum](https://github.com/Dragonshorn-Studios/elyseum) instance.
 
 ## Inputs
 
