@@ -3,18 +3,12 @@
   <rect width="1200" height="280" fill="#1A1A1C"/>
   <!-- mist corner block, top-left notch (the mockup's cut panel) -->
   <path d="M0 0 H620 L560 96 V280 H0 Z" fill="#F4F3F0"/>
-  <!-- seal: circle + rotated square + ticks + center dot -->
+  <!-- seal: circle + rotated square + center dot, on the charcoal field -->
   <g stroke="#F4F3F0" stroke-width="2" fill="none">
-    <circle cx="96" cy="96" r="56"/>
-    <rect x="66" y="66" width="60" height="60" transform="rotate(45 96 96)"/>
+    <circle cx="1050" cy="118" r="64"/>
+    <rect x="1018" y="86" width="64" height="64" transform="rotate(45 1050 118)"/>
   </g>
-  <g stroke="#F4F3F0" stroke-width="2">
-    <line x1="96" y1="18" x2="96" y2="34"/>
-    <line x1="96" y1="158" x2="96" y2="174"/>
-    <line x1="18" y1="96" x2="34" y2="96"/>
-    <line x1="158" y1="96" x2="174" y2="96"/>
-  </g>
-  <circle cx="96" cy="96" r="6" fill="#F4F3F0"/>
+  <circle cx="1050" cy="118" r="6" fill="#F4F3F0"/>
   <!-- wordmark: thin serif caps, strike rule through the letters -->
   <text x="240" y="118" font-family="Georgia, 'Times New Roman', serif" font-size="88" font-weight="400" letter-spacing="16" fill="#F4F3F0" textLength="700" lengthAdjust="spacingAndGlyphs">ELYSEUM</text>
   <line x1="246" y1="90" x2="940" y2="90" stroke="#F4F3F0" stroke-width="2" opacity="0.85"/>
@@ -24,5 +18,4 @@
   <text x="246" y="236" font-family="'Courier New', monospace" font-size="24" fill="#A5A19A">[RUN]&#160;&#160;&#160;[COVERAGE]&#160;&#160;&#160;[BUILD]</text>
   <!-- right rule detail -->
   <line x1="980" y1="236" x2="1152" y2="236" stroke="#3A3A40" stroke-width="2"/>
-  <line x1="980" y1="60" x2="1152" y2="60" stroke="#3A3A40" stroke-width="2"/>
 </svg>
