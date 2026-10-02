@@ -1,13 +1,14 @@
+<div align="center">
+  <img src=".github/logo.svg" alt="Elyseum — CI quality ledger" width="720">
+</div>
+
 # Elyseum Coverage Reporter Action
 
 A thin GitHub Action that runs a pinned version of
-[`elyseum-cli`](https://github.com/Dragonshorn-Studios/elyseum-cli) against
-your repository and publishes exactly one PR comment plus one quality-gate
-check run. Part of the
-[Elyseum](https://github.com/Dragonshorn-Studios/elyseum) suite.
-
-The CLI is installed from npm at a pinned version (input
-`elyseum-cli-version`, default `1.0.12`); the Action itself runs on Node 20.
+[`elyseum-cli`](https://github.com/Dragonshorn-Studios/elyseum-cli) on your
+pull requests and publishes exactly one PR comment plus one quality-gate
+check run — and optionally uploads the versioned result envelope to your
+[Elyseum](https://github.com/Dragonshorn-Studios/elyseum) instance.
 
 ## Inputs
 

@@ -11,7 +11,9 @@ permissions:
 
 jobs:
   scripts:
-    runs-on: ubuntu-latest
+    # Self-hosted (docker-labeled): private repository, hosted runners bill per minute.
+    # Runner prerequisites: bash, curl, python3, git, Node via setup-node.
+    runs-on: [self-hosted, docker]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
